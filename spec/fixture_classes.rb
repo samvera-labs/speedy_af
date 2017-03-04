@@ -2,7 +2,7 @@ class Chapter < ActiveFedora::Base
   property :title, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_searchable
   end
-  property :contributors, predicate: ::RDF::Vocab::DC.contributor, multiple: true do |index|
+  property :contributor, predicate: ::RDF::Vocab::DC.contributor, multiple: true do |index|
     index.as :stored_searchable
   end
 end
@@ -17,7 +17,7 @@ class Book < ActiveFedora::Base
   end
   ordered_aggregation :chapters, through: :list_source
   indexed_ordered_aggregation :chapters
-  
+
   def uppercase_title
     title.upcase
   end

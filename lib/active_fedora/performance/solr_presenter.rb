@@ -3,8 +3,10 @@ module ActiveFedora
     class SolrPresenter
       SOLR_ALL = 10_000_000
 
+      attr_reader :model
+
       def self.find(id, opts = {})
-        where(%(id:"#{id}")).first
+        where(%(id:"#{id}"), opts).first
       end
 
       def self.where(query, opts = {})
@@ -20,10 +22,11 @@ module ActiveFedora
 
       def initialize(solr_document, defaults = {})
         defaults ||= {}
+        @model = solr_document[:has_model_ssim].first.safe_constantize
         @attrs = defaults.dup
         solr_document.each_pair do |k, v|
           attr_name, value = parse_solr_field(k, v)
-          @attrs[attr_name.to_sym] = value          
+          @attrs[attr_name.to_sym] = value
         end
 
         @attrs.each_pair do |k, v|
@@ -33,10 +36,6 @@ module ActiveFedora
           resource.content = v unless v.strip.empty?
           @attrs[k] = resource
         end
-      end
-
-      def model
-        @attrs[:has_model].first.safe_constantize
       end
 
       def real_object
@@ -64,9 +63,10 @@ module ActiveFedora
       end
 
       protected
+
         def parse_solr_field(k, v)
-          transformations = { 
-            b:  ->(m) { !!(m == 'true') },
+          transformations = {
+            b:  ->(m) { m == 'true' },
             db: ->(m) { m.to_f },
             dt: ->(m) { Time.parse(m) },
             f:  ->(m) { m.to_f },
@@ -77,13 +77,17 @@ module ActiveFedora
             te: ->(m) { m },
             ti: ->(m) { m }
           }
-          attr_name, type, _stored, _indexed, multi = k.scan(/^(.+)_(.+)(s)(i?)(m?)$/).first
+          attr_name, type, _stored, _indexed, _multi = k.scan(/^(.+)_(.+)(s)(i?)(m?)$/).first
           return [k, v] if attr_name.nil?
           value = Array(v).map { |m| transformations[type.to_sym].call(m) }
-          value = value.first unless multi == 'm'
+          value = value.first unless multiple?(@model.properties[attr_name])
           [attr_name, value]
         end
-        
+
+        def multiple?(prop)
+          prop.present? && prop.respond_to?(:multiple?) && prop.multiple?
+        end
+
         def load_children(property)
           parent_id_property = "#{has_model.underscore}_id".to_sym
           reflection = model.reflections[property.to_sym]
