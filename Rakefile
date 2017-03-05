@@ -42,3 +42,5 @@ task :spec do
     Rake::Task[:rspec].invoke
   end
 end
+
+task default: :ci
