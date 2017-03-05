@@ -14,7 +14,9 @@ end
 class Book < ActiveFedora::Base
   include ActiveFedora::Performance::OrderedAggregationIndex
 
-  has_subresource 'notes', class_name: 'IndexedFile'
+  belongs_to :library, predicate: ::RDF::Vocab::DC.isPartOf
+  has_subresource 'indexed_file', class_name: 'IndexedFile'
+  has_subresource 'unindexed_file', class_name: 'ActiveFedora::File'
   property :title, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_searchable
   end
@@ -27,4 +29,8 @@ class Book < ActiveFedora::Base
   def uppercase_title
     title.upcase
   end
+end
+
+class Library < ActiveFedora::Base
+  has_many :books, predicate: ::RDF::Vocab::DC.isPartOf
 end
