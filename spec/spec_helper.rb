@@ -8,9 +8,6 @@ SimpleCov.start do
   add_filter '/spec/'
 end
 
-require 'active_job'
-ActiveJob::Base.logger = nil
-
 require 'active-fedora'
 require 'active_fedora/performance'
 require 'rspec'
