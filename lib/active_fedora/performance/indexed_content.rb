@@ -18,7 +18,6 @@ module ActiveFedora
       def update_external_index
         ActiveFedora::SolrService.add(to_solr({}, external_index: true), softCommit: true)
       end
-
     end
   end
 end

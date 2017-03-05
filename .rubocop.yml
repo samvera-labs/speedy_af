@@ -29,6 +29,8 @@ Metrics/BlockNesting:
   Exclude:
 
 Metrics/CyclomaticComplexity:
+  Max: 7
+  Severity: warning
   Exclude:
 
 Metrics/PerceivedComplexity:
@@ -38,7 +40,7 @@ Metrics/ModuleLength:
   Exclude:
 
 Metrics/ClassLength:
-  Exclude:
+  Enabled: false
 
 Metrics/MethodLength:
   Enabled: false

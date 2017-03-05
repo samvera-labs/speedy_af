@@ -1,7 +1,7 @@
 module ActiveFedora
   module Performance
     class SolrPresenter
-      class NotAvailable < Exception; end
+      class NotAvailable < RuntimeError; end
 
       SOLR_ALL = 10_000_000
 
@@ -100,7 +100,7 @@ module ActiveFedora
           if reflection.has_many? && reflection.respond_to?(:predicate_for_solr)
             return load_has_many_reflection(reflection.predicate_for_solr)
           end
-          if reflection.kind_of?(ActiveFedora::Reflection::HasSubresourceReflection)
+          if reflection.is_a?(ActiveFedora::Reflection::HasSubresourceReflection)
             return load_subresource_content(reflection)
           end
           []
@@ -112,7 +112,7 @@ module ActiveFedora
           ids = docs.first['ordered_targets_ssim']
           return [] if ids.nil? || ids.empty?
           query = ActiveFedora::SolrQueryBuilder.construct_query_for_ids(ids)
-          SolrPresenter.where(query, order: ->{ids})
+          SolrPresenter.where(query, order: -> { ids })
         end
 
         def load_belongs_to_reflection(predicate)
