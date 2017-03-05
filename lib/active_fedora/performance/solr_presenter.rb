@@ -41,7 +41,7 @@ module ActiveFedora
       end
 
       def real?
-        not @real_object.nil?
+        !@real_object.nil?
       end
 
       def respond_to_missing?(sym, _include_private = false)
@@ -125,9 +125,9 @@ module ActiveFedora
 
         def load_through_reflection(reflection, ids_only = false)
           ids = case reflection.options[:through]
-          when 'ActiveFedora::Aggregation::Proxy' then proxy_ids(reflection)
-          else subresource_ids(reflection)
-          end
+                when 'ActiveFedora::Aggregation::Proxy' then proxy_ids(reflection)
+                else subresource_ids(reflection)
+                end
           return ids if ids_only
           query = ActiveFedora::SolrQueryBuilder.construct_query_for_ids(ids)
           SolrPresenter.where(query, order: -> { ids })
