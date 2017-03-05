@@ -1,6 +1,8 @@
 module ActiveFedora
   module Performance
     class SolrPresenter
+      class NotAvailable < Exception; end
+
       SOLR_ALL = 10_000_000
 
       attr_reader :model
@@ -28,18 +30,14 @@ module ActiveFedora
           attr_name, value = parse_solr_field(k, v)
           @attrs[attr_name.to_sym] = value
         end
-
-        @attrs.each_pair do |k, v|
-          reflection = model.reflections[k.to_sym]
-          next unless reflection.is_a?(ActiveFedora::Reflection::HasSubresourceReflection)
-          resource = reflection.class_name.safe_constantize.new
-          resource.content = v unless v.strip.empty?
-          @attrs[k] = resource
-        end
       end
 
       def real_object
-        @real_object ||= ActiveFedora::Base.find(id)
+        if @real_object.nil?
+          @real_object = model.find(id)
+          @attrs.clear
+        end
+        @real_object
       end
 
       def respond_to_missing?(sym, _include_private = false)
@@ -50,13 +48,17 @@ module ActiveFedora
 
       def method_missing(sym, *args)
         return @attrs[sym] if @attrs.key?(sym)
-        if model.reflections[sym]
-          children = load_children(sym)
-          return children unless children.nil?
+        reflection = model.reflections[sym] || model.reflections[:"#{sym.to_s.singularize}_proxies"]
+        unless reflection.nil?
+          begin
+            result = load_from_reflection(reflection)
+            return result unless result.nil?
+          rescue NotAvailable => e
+            ActiveFedora.logger.warn(e.message)
+          end
         end
         if model.instance_methods.include?(sym)
-          Rails.logger.warn("Reifying #{model} because #{sym} called from #{caller.first}")
-          @attrs.clear!
+          ActiveFedora.logger.warn("Reifying #{model} because #{sym} called from #{caller.first}")
           return real_object.send(sym, *args)
         end
         super
@@ -88,15 +90,48 @@ module ActiveFedora
           prop.present? && prop.respond_to?(:multiple?) && prop.multiple?
         end
 
-        def load_children(property)
-          parent_id_property = "#{has_model.underscore}_id".to_sym
-          reflection = model.reflections[property.to_sym]
-          return nil if reflection.nil?
-          index_config = reflection.class_name.safe_constantize.index_config[parent_id_property]
-          return nil if index_config.nil?
-          self.class.from_parent(self, relation: index_config.key.to_sym)
-        rescue
-          nil
+        def load_from_reflection(reflection)
+          if reflection.options.key?(:through)
+            return load_indexed_reflection(reflection.options[:through])
+          end
+          if reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr)
+            return load_belongs_to_reflection(reflection.predicate_for_solr)
+          end
+          if reflection.has_many? && reflection.respond_to?(:predicate_for_solr)
+            return load_has_many_reflection(reflection.predicate_for_solr)
+          end
+          if reflection.kind_of?(ActiveFedora::Reflection::HasSubresourceReflection)
+            return load_subresource_content(reflection)
+          end
+          []
+        end
+
+        def load_indexed_reflection(subresource)
+          docs = ActiveFedora::SolrService.query %(id:"#{id}/#{subresource}"), rows: 1
+          return [] if docs.empty?
+          ids = docs.first['ordered_targets_ssim']
+          return [] if ids.nil? || ids.empty?
+          query = ActiveFedora::SolrQueryBuilder.construct_query_for_ids(ids)
+          SolrPresenter.where(query, order: ->{ids})
+        end
+
+        def load_belongs_to_reflection(predicate)
+          id = @attrs[predicate.to_sym]
+          SolrPresenter.find(id)
+        end
+
+        def load_has_many_reflection(predicate)
+          query = %(#{predicate}_ssim:#{id})
+          SolrPresenter.where(query)
+        end
+
+        def load_subresource_content(reflection)
+          subresource = reflection.name
+          docs = ActiveFedora::SolrService.query %(id:"#{id}/#{subresource}"), rows: 1
+          raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty?
+          resource = reflection.class_name.safe_constantize.new
+          resource.content = docs.first['content_ss']
+          resource
         end
     end
   end

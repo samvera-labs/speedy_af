@@ -4,6 +4,7 @@ module ActiveFedora
     def self.active_job?
       Object.const_defined?(:ActiveJob)
     end
+    autoload :IndexedContent, 'active_fedora/performance/indexed_content'
     autoload :SolrPresenter, 'active_fedora/performance/solr_presenter'
     autoload :OrderedAggregationIndex, 'active_fedora/performance/ordered_aggregation_index'
     if active_job?
