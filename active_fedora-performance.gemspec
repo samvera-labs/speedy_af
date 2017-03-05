@@ -11,7 +11,9 @@ Gem::Specification.new do |s|
   s.description = 'Performance enhancements for ActiveFedora'
   s.email = 'mbklein@gmail.com'
   s.extra_rdoc_files = [
-    'README.md'
+    'CONTRIBUTING.md',
+    'README.md',
+    'LICENSE'
   ]
   s.homepage = 'http://github.com/projecthydra-labs/active_fedora-performance'
   s.licenses = 'APACHE2'
