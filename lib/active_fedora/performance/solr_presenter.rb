@@ -54,11 +54,11 @@ module ActiveFedora
             result = load_from_reflection(reflection)
             return result unless result.nil?
           rescue NotAvailable => e
-            ActiveFedora.logger.warn(e.message)
+            model.logger.warn(e.message)
           end
         end
         if model.instance_methods.include?(sym)
-          ActiveFedora.logger.warn("Reifying #{model} because #{sym} called from #{caller.first}")
+          model.logger.warn("Reifying #{model} because #{sym} called from #{caller.first}")
           return real_object.send(sym, *args)
         end
         super

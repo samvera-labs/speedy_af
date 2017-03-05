@@ -1,3 +1,7 @@
+class IndexedFile < ActiveFedora::File
+  include ActiveFedora::Performance::IndexedContent
+end
+
 class Chapter < ActiveFedora::Base
   property :title, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_searchable
@@ -9,6 +13,8 @@ end
 
 class Book < ActiveFedora::Base
   include ActiveFedora::Performance::OrderedAggregationIndex
+
+  has_subresource 'notes', class_name: 'IndexedFile'
   property :title, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_searchable
   end
