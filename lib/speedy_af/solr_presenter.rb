@@ -58,6 +58,8 @@ module SpeedyAF
     end
 
     def method_missing(sym, *args)
+      return real_object.send(sym, *args) if real?
+      
       return @attrs[sym] if @attrs.key?(sym)
       reflection_name = reflection_name_for(sym)
       reflection = model.reflections[reflection_name] || model.reflections[:"#{reflection_name.to_s.singularize}_proxies"]
