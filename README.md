@@ -2,7 +2,7 @@ Code: [![Version](https://badge.fury.io/rb/speedy_af.png)](http://badge.fury.io/
 [![Build Status](https://travis-ci.org/projecthydra-labs/speedy_af.png?branch=master)](https://travis-ci.org/projecthydra-labs/speedy_af)
 [![Coverage Status](https://coveralls.io/repos/github/projecthydra-labs/speedy_af/badge.svg?branch=master)](https://coveralls.io/github/projecthydra-labs/speedy_af?branch=master)
 [![Code Climate](https://codeclimate.com/github/projecthydra-labs/speedy_af/badges/gpa.svg)](https://codeclimate.com/github/projecthydra-labs/speedy_af)
-[![Dependency Status](https://gemnasium.com/projecthydra-labs/speedy-af.png)](https://gemnasium.com/projecthydra-labs/speedy-af)
+[![Dependency Status](https://gemnasium.com/projecthydra-labs/speedy_af.png)](https://gemnasium.com/projecthydra-labs/speedy_af)
 
 Docs: [![Documentation Status](https://inch-ci.org/github/projecthydra-labs/speedy_af.svg?branch=master)](https://inch-ci.org/github/projecthydra-labs/speedy_af)
 [![API Docs](http://img.shields.io/badge/API-docs-blue.svg)](http://rubydoc.info/gems/speedy_af)
