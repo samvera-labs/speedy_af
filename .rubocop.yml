@@ -130,6 +130,7 @@ Style/SignalException:
 
 Style/FileName:
   Exclude:
+    - 'lib/speedy-af.rb'
 
 Style/ZeroLengthPredicate:
   Exclude:
