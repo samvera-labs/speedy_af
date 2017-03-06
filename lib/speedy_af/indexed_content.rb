@@ -10,6 +10,7 @@ module SpeedyAF
       return solr_doc unless opts[:external_index]
       solr_doc.tap do |doc|
         doc[:id] = id
+        doc[:uri_ss] = uri
         doc[:empty_bs] = empty?
         doc[:content_ss] = content
       end

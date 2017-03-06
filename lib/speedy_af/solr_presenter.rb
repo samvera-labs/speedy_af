@@ -59,7 +59,7 @@ module SpeedyAF
 
     def method_missing(sym, *args)
       return real_object.send(sym, *args) if real?
-      
+
       return @attrs[sym] if @attrs.key?(sym)
       reflection_name = reflection_name_for(sym)
       reflection = model.reflections[reflection_name] || model.reflections[:"#{reflection_name.to_s.singularize}_proxies"]
@@ -166,6 +166,7 @@ module SpeedyAF
         docs = ActiveFedora::SolrService.query %(id:"#{id}/#{subresource}"), rows: 1
         raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty?
         resource = reflection.class_name.safe_constantize.new
+        resource.uri = docs.first['uri_ss']
         resource.content = docs.first['content_ss']
         resource
       end
