@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe ActiveFedora::Performance::OrderedAggregationIndex do
+describe SpeedyAF::OrderedAggregationIndex do
   before { load_fixture_classes!   }
   after  { unload_fixture_classes! }
 

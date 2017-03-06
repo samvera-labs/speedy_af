@@ -1,5 +1,5 @@
 class IndexedFile < ActiveFedora::File
-  include ActiveFedora::Performance::IndexedContent
+  include SpeedyAF::IndexedContent
 end
 
 class Chapter < ActiveFedora::Base
@@ -12,7 +12,7 @@ class Chapter < ActiveFedora::Base
 end
 
 class Book < ActiveFedora::Base
-  include ActiveFedora::Performance::OrderedAggregationIndex
+  include SpeedyAF::OrderedAggregationIndex
 
   belongs_to :library, predicate: ::RDF::Vocab::DC.isPartOf
   has_subresource 'indexed_file', class_name: 'IndexedFile'

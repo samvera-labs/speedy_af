@@ -1,7 +1,7 @@
 require 'spec_helper'
 require 'rdf/vocab/dc'
 
-describe ActiveFedora::Performance::SolrPresenter do
+describe SpeedyAF::SolrPresenter do
   before { load_fixture_classes!   }
   after  { unload_fixture_classes! }
 

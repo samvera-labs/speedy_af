@@ -1,0 +1,1 @@
+require 'speedy_af'

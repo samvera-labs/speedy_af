@@ -10,7 +10,7 @@ SimpleCov.start do
 end
 
 require 'active-fedora'
-require 'active_fedora/performance'
+require 'speedy_af'
 require 'rspec'
 require 'rspec/its'
 

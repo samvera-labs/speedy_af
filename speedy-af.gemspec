@@ -1,8 +1,8 @@
-require File.expand_path('../lib/active_fedora/performance/version', __FILE__)
+require File.expand_path('../lib/speedy_af/version', __FILE__)
 
 Gem::Specification.new do |s|
-  s.name = 'active_fedora-performance'
-  s.version = ActiveFedora::Performance::VERSION
+  s.name = 'speedy-af'
+  s.version = SpeedyAF::VERSION
 
   if s.respond_to? :required_rubygems_version=
     s.required_rubygems_version = Gem::Requirement.new('>= 0')
@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
     'README.md',
     'LICENSE'
   ]
-  s.homepage = 'http://github.com/projecthydra-labs/active_fedora-performance'
+  s.homepage = 'http://github.com/projecthydra-labs/speedy_af'
   s.licenses = 'APACHE2'
   s.require_paths = ['lib']
   s.rubygems_version = '1.5.2'

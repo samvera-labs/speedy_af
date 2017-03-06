@@ -1,15 +1,15 @@
-Code: [![Version](https://badge.fury.io/rb/active_fedora-performance.png)](http://badge.fury.io/rb/active_fedora-performance)
-[![Build Status](https://travis-ci.org/projecthydra-labs/active_fedora-performance.png?branch=master)](https://travis-ci.org/projecthydra-labs/active_fedora-performance)
-[![Coverage Status](https://coveralls.io/repos/github/projecthydra-labs/active_fedora-performance/badge.svg?branch=master)](https://coveralls.io/github/projecthydra-labs/active_fedora-performance?branch=master)
-[![Code Climate](https://codeclimate.com/github/projecthydra-labs/active_fedora-performance/badges/gpa.svg)](https://codeclimate.com/github/projecthydra-labs/active_fedora-performance)
-[![Dependency Status](https://gemnasium.com/projecthydra-labs/active_fedora-performance.png)](https://gemnasium.com/projecthydra-labs/active_fedora-performance)
+Code: [![Version](https://badge.fury.io/rb/speedy_af.png)](http://badge.fury.io/rb/speedy_af)
+[![Build Status](https://travis-ci.org/projecthydra-labs/speedy_af.png?branch=master)](https://travis-ci.org/projecthydra-labs/speedy_af)
+[![Coverage Status](https://coveralls.io/repos/github/projecthydra-labs/speedy_af/badge.svg?branch=master)](https://coveralls.io/github/projecthydra-labs/speedy_af?branch=master)
+[![Code Climate](https://codeclimate.com/github/projecthydra-labs/speedy_af/badges/gpa.svg)](https://codeclimate.com/github/projecthydra-labs/speedy_af)
+[![Dependency Status](https://gemnasium.com/projecthydra-labs/speedy-af.png)](https://gemnasium.com/projecthydra-labs/speedy-af)
 
-Docs: [![Documentation Status](https://inch-ci.org/github/projecthydra-labs/active_fedora-performance.svg?branch=master)](https://inch-ci.org/github/projecthydra-labs/active_fedora-performance)
-[![API Docs](http://img.shields.io/badge/API-docs-blue.svg)](http://rubydoc.info/gems/active_fedora-performance)
+Docs: [![Documentation Status](https://inch-ci.org/github/projecthydra-labs/speedy_af.svg?branch=master)](https://inch-ci.org/github/projecthydra-labs/speedy_af)
+[![API Docs](http://img.shields.io/badge/API-docs-blue.svg)](http://rubydoc.info/gems/speedy_af)
 [![Contribution Guidelines](http://img.shields.io/badge/CONTRIBUTING-Guidelines-blue.svg)](./CONTRIBUTING.md)
 [![Apache 2.0 License](http://img.shields.io/badge/APACHE2-license-blue.svg)](./LICENSE)
 
-# ActiveFedora::Performance
+# SpeedyAF
 
 This gem provides two mixins and a presenter designed to speed up ActiveFedora-based discovery and
 display operations.
@@ -34,7 +34,7 @@ to the including class.
 ```ruby
 class Container < ActiveFedora::Base
   include ActiveFedora::Associations
-  include ActiveFedora::Performance::OrderedAggregationIndex
+  include SpeedyAF::OrderedAggregationIndex
 
   ordered_aggregation :items, class_name: 'Item', through: :list_source
   indexed_ordered_aggregation :items
@@ -61,9 +61,9 @@ It casts indexed attributes to their correct types, loads both indexed and unind
 
 A presenter (or array of presenters) can be instantiated by calling:
 
-`ActiveFedora::Performance::SolrPresenter.find(item_pid)`
+`SpeedyAF::SolrPresenter.find(item_pid)`
 or
-`ActiveFedora::Performance::SolrPresenter.where(solr_query)`
+`SpeedyAF::SolrPresenter.where(solr_query)`
 
 See the spec tests for details.
 
@@ -71,7 +71,7 @@ See the spec tests for details.
 
 Add this line to your application's Gemfile:
 
-    gem 'active_fedora-performance'
+    gem 'speedy_af'
 
 And then execute:
 
@@ -79,7 +79,7 @@ And then execute:
 
 Or install it yourself via:
 
-    $ gem install active_fedora-performance
+    $ gem install speedy_af
 
 # Help
 
