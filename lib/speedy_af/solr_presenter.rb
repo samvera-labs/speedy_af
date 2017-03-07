@@ -189,9 +189,9 @@ module SpeedyAF
 
       def load_subresource_content(reflection)
         subresource = reflection.name
-        doc = ActiveFedora::SolrService.query(%(id:"#{id}/#{subresource}"), rows: 1).first
-        raise NotAvailable, "`#{subresource}' is not indexed" if doc.nil? || !doc.key?('has_model_ssim')
-        SolrPresenter.new(doc)
+        docs = ActiveFedora::SolrService.query(%(id:"#{id}/#{subresource}"), rows: 1)
+        raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty? || !docs.first.key?('has_model_ssim')
+        SolrPresenter.from(docs).first
       end
   end
 end
