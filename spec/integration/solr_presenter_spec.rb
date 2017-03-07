@@ -132,6 +132,12 @@ describe SpeedyAF::SolrPresenter do
         expect(book_presenter).to be_real
       end
 
+      it 'reifies indexed subresources' do
+        ipsum_presenter = book_presenter.indexed_file
+        expect(ipsum_presenter.metadata).to be_a(ActiveFedora::WithMetadata::MetadataNode)
+        expect(ipsum_presenter).to be_real
+      end
+
       it 'loads unindexed subresources' do
         expect(book_presenter.unindexed_file.content).to eq(unindexed_content)
         expect(book_presenter).to be_real
