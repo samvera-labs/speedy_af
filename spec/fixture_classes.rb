@@ -11,7 +11,14 @@ class Chapter < ActiveFedora::Base
   end
 end
 
+module DowncaseBehavior
+  def lowercase_title
+    title.downcase
+  end
+end
+
 class Book < ActiveFedora::Base
+  include DowncaseBehavior
   include SpeedyAF::OrderedAggregationIndex
 
   belongs_to :library, predicate: ::RDF::Vocab::DC.isPartOf

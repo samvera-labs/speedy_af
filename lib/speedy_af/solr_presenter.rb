@@ -1,3 +1,5 @@
+require 'ostruct'
+
 module SpeedyAF
   class SolrPresenter
     class NotAvailable < RuntimeError; end
@@ -5,6 +7,18 @@ module SpeedyAF
     SOLR_ALL = 10_000_000
 
     attr_reader :attrs, :model
+
+    def self.model_configs
+      @model_configs ||= { self => OpenStruct.new(subclass: self, defaults: {}) }
+    end
+
+    def self.config(model, opts = {})
+      model_configs[model] ||= OpenStruct.new(subclass: Class.new(self), defaults: {})
+      model_configs[model].defaults.merge!(opts[:defaults]) if opts.key?(:defaults)
+      Array(opts[:mixins]).each do |mixin|
+        model_configs[model].subclass.include(mixin)
+      end
+    end
 
     def self.find(id, opts = {})
       where(%(id:"#{id}"), opts).first
@@ -16,14 +30,23 @@ module SpeedyAF
     end
 
     def self.from(docs, opts = {})
-      hash = docs.each_with_object({}) { |doc, h| h[doc['id']] = new(doc, opts[:defaults]) }
+      hash = docs.each_with_object({}) do |doc, h|
+        model_opts = model_configs.fetch(model_for(doc), model_configs[self])
+        defaults = model_opts.defaults.dup
+        defaults.merge!(opts[:defaults]) if opts.key?(:defaults)
+        h[doc['id']] = model_opts.subclass.new(doc, defaults)
+      end
       return hash.values if opts[:order].nil?
       opts[:order].call.collect { |id| hash[id] }.to_a
     end
 
+    def self.model_for(solr_document)
+      solr_document[:has_model_ssim].first.safe_constantize
+    end
+
     def initialize(solr_document, defaults = {})
       defaults ||= {}
-      @model = solr_document[:has_model_ssim].first.safe_constantize
+      @model = SolrPresenter.model_for(solr_document)
       @attrs = defaults.dup
       solr_document.each_pair do |k, v|
         attr_name, value = parse_solr_field(k, v)

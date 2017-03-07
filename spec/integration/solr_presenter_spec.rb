@@ -99,6 +99,21 @@ describe SpeedyAF::SolrPresenter do
       end
     end
 
+    context 'configuration' do
+      before do
+        described_class.config Book, defaults: { foo: 'bar!' }, mixins: [DowncaseBehavior]
+      end
+
+      it 'adds default values' do
+        expect(book_presenter.foo).to eq('bar!')
+      end
+
+      it 'mixes in the mixins' do
+        expect(book_presenter.lowercase_title).to eq(book.lowercase_title)
+        expect(book_presenter).not_to be_real
+      end
+    end
+
     context 'reification' do
       it 'knows when it is real' do
         expect(book_presenter).not_to be_real
