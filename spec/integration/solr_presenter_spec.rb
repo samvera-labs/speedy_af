@@ -121,10 +121,17 @@ describe SpeedyAF::SolrPresenter do
         expect(book_presenter).to be_real
       end
 
-      it '#reload' do
+      it '#reload (Base)' do
         expect(book_presenter.real_object).to be_a(Book)
         book_presenter.reload
         expect(book_presenter).not_to be_real
+      end
+
+      it '#reload (File)' do
+        ipsum_presenter = book_presenter.indexed_file
+        expect(ipsum_presenter.real_object).to be_a(IndexedFile)
+        ipsum_presenter.reload
+        expect(ipsum_presenter).not_to be_real
       end
 
       it 'reifies when it has to' do
