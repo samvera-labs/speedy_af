@@ -3,7 +3,7 @@ require 'bundler/setup'
 
 require 'simplecov'
 require 'coveralls'
-Coveralls.wear!
+Coveralls.wear! if ENV['TRAVIS']
 
 SimpleCov.start do
   add_filter '/spec/'

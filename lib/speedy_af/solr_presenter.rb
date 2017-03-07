@@ -43,35 +43,36 @@ module SpeedyAF
       !@real_object.nil?
     end
 
-    def respond_to_missing?(sym, _include_private = false)
-      @attrs.key?(sym) ||
-        model.reflections[sym].present? ||
-        model.instance_methods.include?(sym)
-    end
-
     def reload
-      dup = self.class.find(id)
+      dup = SolrPresenter.find(id)
       @attrs = dup.attrs
       @model = dup.model
       @real_object = nil
       self
     end
 
+    def respond_to_missing?(sym, _include_private = false)
+      @attrs.key?(sym) ||
+        model.reflections[sym].present? ||
+        model.instance_methods.include?(sym)
+    end
+
     def method_missing(sym, *args)
       return real_object.send(sym, *args) if real?
 
       return @attrs[sym] if @attrs.key?(sym)
-      reflection_name = reflection_name_for(sym)
-      reflection = model.reflections[reflection_name] || model.reflections[:"#{reflection_name.to_s.singularize}_proxies"]
+
+      reflection = reflection_for(sym)
       unless reflection.nil?
         begin
           return load_from_reflection(reflection, sym.to_s =~ /_ids?$/)
         rescue NotAvailable => e
-          model.logger.warn(e.message)
+          ActiveFedora::Base.logger.warn(e.message)
         end
       end
+
       if model.instance_methods.include?(sym)
-        model.logger.warn("Reifying #{model} because #{sym} called from #{caller.first}")
+        ActiveFedora::Base.logger.warn("Reifying #{model} because #{sym} called from #{caller.first}")
         return real_object.send(sym, *args)
       end
       super
@@ -79,15 +80,17 @@ module SpeedyAF
 
     protected
 
-      def reflection_name_for(sym)
-        sym.to_s.sub(/_id(s?)$/, '\1').to_sym
+      def reflection_for(sym)
+        return nil unless model.respond_to?(:reflections)
+        reflection_name = sym.to_s.sub(/_id(s?)$/, '\1').to_sym
+        model.reflections[reflection_name] || model.reflections[:"#{reflection_name.to_s.singularize}_proxies"]
       end
 
       def parse_solr_field(k, v)
         # :nocov:
         transforms = {
           'dt' => ->(m) { Time.parse(m) },
-          'b'  => ->(m) { m == 'true' },
+          'b'  => ->(m) { m },
           'db' => ->(m) { m.to_f },
           'f'  => ->(m) { m.to_f },
           'i'  => ->(m) { m.to_i },
@@ -98,7 +101,7 @@ module SpeedyAF
         attr_name, type, _stored, _indexed, _multi = k.scan(/^(.+)_(.+)(s)(i?)(m?)$/).first
         return [k, v] if attr_name.nil?
         value = Array(v).map { |m| transforms.fetch(type, transforms[nil]).call(m) }
-        value = value.first unless multiple?(@model.properties[attr_name])
+        value = value.first unless @model.respond_to?(:properties) && multiple?(@model.properties[attr_name])
         [attr_name, value]
       end
 
@@ -165,10 +168,9 @@ module SpeedyAF
         subresource = reflection.name
         docs = ActiveFedora::SolrService.query %(id:"#{id}/#{subresource}"), rows: 1
         raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty?
-        resource = reflection.class_name.safe_constantize.new
-        resource.uri = docs.first['uri_ss']
-        resource.content = docs.first['content_ss']
-        resource
+        doc = docs.first
+        doc[:has_model_ssim] = [reflection.class_name]
+        SolrPresenter.new(doc)
       end
   end
 end

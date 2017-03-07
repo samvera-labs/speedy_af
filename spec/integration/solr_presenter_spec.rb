@@ -15,7 +15,7 @@ describe SpeedyAF::SolrPresenter do
   let!(:indexed_content) {
     <<-IPSUM
     Zombie ipsum reversus ab viral inferno, nam rick grimes malum cerebro. De carne lumbering
-    animata corpora quaeritis. Summus brains sit​​, morbo vel maleficia? De apocalypsi gorger
+    animata corpora quaeritis. Summus brains sit, morbo vel maleficia? De apocalypsi gorger
     omero undead survivor dictum mauris. Hi mindless mortuis soulless creaturas, imo evil
     stalking monstra adventus resi dentevil vultus comedat cerebella viventium.
     IPSUM
@@ -75,9 +75,10 @@ describe SpeedyAF::SolrPresenter do
 
       it 'loads indexed subresources' do
         ipsum_presenter = book_presenter.indexed_file
-        expect(ipsum_presenter).to be_a(IndexedFile)
+        expect(ipsum_presenter.model).to eq(IndexedFile)
         expect(ipsum_presenter.content).to eq(indexed_content)
         expect(book_presenter).not_to be_real
+        expect(ipsum_presenter).not_to be_real
       end
 
       it 'loads has_many reflections' do
