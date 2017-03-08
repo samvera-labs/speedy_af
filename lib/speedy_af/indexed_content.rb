@@ -15,7 +15,7 @@ module SpeedyAF
         doc[:uri_ss] = uri
         doc[:mime_type_ss] = mime_type
         doc[:original_name_ss] = original_name
-        doc[:size_is] = size
+        doc[:size_is] = content.present? ? content.size : 0
         doc[:'empty?_bs'] = empty?
         doc[:content_ss] = content if index_content?
       end
