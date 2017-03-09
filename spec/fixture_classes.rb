@@ -41,3 +41,8 @@ end
 class Library < ActiveFedora::Base
   has_many :books, predicate: ::RDF::Vocab::DC.isPartOf
 end
+
+module SpeedySpecs
+  class DeepClass < ActiveFedora::Base
+  end
+end

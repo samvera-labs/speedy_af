@@ -49,21 +49,21 @@ target objects instead of an `ActiveFedora::Orders::TargetProxy`, but the effect
 ### IndexedContent
 
 When mixed into an `ActiveFedora::File` descendant, it will index the resource's full content to Solr
-on save. This allows the [`SolrPresenter`](#solrpresenter) to load it up without hitting Fedora.
+on save. This allows the [`Base`](#Base) to load it up without hitting Fedora.
 
-### SolrPresenter
+### Base
 
-`SolrPresenter` is designed to load everything it can about an ActiveFedora object from Solr,
+`SpeedyAF::Base` is designed to load everything it can about an ActiveFedora object from Solr,
 transparently lazy-loading and delegating calls to the underlying Fedora object only when necessary.
 It casts indexed attributes to their correct types, loads both indexed and unindexed subresources
 (See [`IndexedContent`](#indexedcontent)), and responds to most reflection accessors with another
-`SolrPresenter` instance containing proxies for the desired objects.
+`Base` instance containing proxies for the desired objects.
 
 A presenter (or array of presenters) can be instantiated by calling:
 
-`SpeedyAF::SolrPresenter.find(item_pid)`
+`SpeedyAF::Base.find(item_pid)`
 or
-`SpeedyAF::SolrPresenter.where(solr_query)`
+`SpeedyAF::Base.where(solr_query)`
 
 See the spec tests for details.
 
@@ -87,8 +87,10 @@ If you have questions or need help, please email [the Hydra community tech list]
 
 # Known Issues
 
-* `SolrPresenter` currently tries to grab all relevant rows from Solr at once. Future releases will
+* `Base` currently tries to grab all relevant rows from Solr at once. Future releases will
   be more mindful of both local resources and Solr request limits.
+* `Base` may not play nicely with language-tagged RDF literals, as ActiveFedora does not
+  currently index/encode the language tag into Solr.
 
 # Acknowledgments
 

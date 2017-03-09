@@ -31,6 +31,6 @@ def load_fixture_classes!
 end
 
 def unload_fixture_classes!
-  Object.send(:remove_const, :Book)
-  Object.send(:remove_const, :Chapter)
+  Object.send(:remove_const, :SpeedySpecs)
+  SpeedyAF::Proxy.constants.each { |proxy| SpeedyAF::Proxy.send(:remove_const, proxy) }
 end

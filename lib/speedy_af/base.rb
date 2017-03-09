@@ -1,23 +1,36 @@
 require 'ostruct'
 
 module SpeedyAF
-  class SolrPresenter
+  class Base
     class NotAvailable < RuntimeError; end
 
     SOLR_ALL = 10_000_000
 
     attr_reader :attrs, :model
 
-    def self.model_configs
-      @model_configs ||= { self => OpenStruct.new(subclass: self, defaults: {}) }
+    def self.defaults
+      @defaults ||= {}
     end
 
-    def self.config(model, opts = {})
-      model_configs[model] ||= OpenStruct.new(subclass: Class.new(self), defaults: {})
-      model_configs[model].defaults.merge!(opts[:defaults]) if opts.key?(:defaults)
-      Array(opts[:mixins]).each do |mixin|
-        model_configs[model].subclass.include(mixin)
+    def self.defaults=(value)
+      raise ArgumentError unless value.respond_to?(:merge)
+      @defaults = value
+    end
+
+    def self.proxy_class_for(model)
+      klass = "::SpeedyAF::Proxy::#{model.name}".safe_constantize
+      if klass.nil?
+        (namespace, name) = [model.name.deconstantize, model.name.demodulize]
+        klass = namespace.split(/::/).inject(::SpeedyAF::Proxy) { |mod,ns|
+          mod.const_defined?(ns, false) ? mod.const_get(ns, false) : mod.const_set(ns, Module.new)
+        }.const_set(name, Class.new(self))
       end
+      klass
+    end
+
+    def self.config(model, &block)
+      proxy_class = proxy_class_for(model) { Class.new(self) }
+      proxy_class.class_eval(&block) if block_given?
     end
 
     def self.find(id, opts = {})
@@ -31,10 +44,8 @@ module SpeedyAF
 
     def self.from(docs, opts = {})
       hash = docs.each_with_object({}) do |doc, h|
-        model_opts = model_configs.fetch(model_for(doc), model_configs[self])
-        defaults = model_opts.defaults.dup
-        defaults.merge!(opts[:defaults]) if opts.key?(:defaults)
-        h[doc['id']] = model_opts.subclass.new(doc, defaults)
+        proxy = proxy_class_for(model_for(doc))
+        h[doc['id']] = proxy.new(doc, opts[:defaults])
       end
       return hash.values if opts[:order].nil?
       opts[:order].call.collect { |id| hash[id] }.to_a
@@ -44,10 +55,10 @@ module SpeedyAF
       solr_document[:has_model_ssim].first.safe_constantize
     end
 
-    def initialize(solr_document, defaults = {})
-      defaults ||= {}
-      @model = SolrPresenter.model_for(solr_document)
-      @attrs = defaults.dup
+    def initialize(solr_document, instance_defaults = {})
+      instance_defaults ||= {}
+      @model = Base.model_for(solr_document)
+      @attrs = self.class.defaults.merge(instance_defaults)
       solr_document.each_pair do |k, v|
         attr_name, value = parse_solr_field(k, v)
         @attrs[attr_name.to_sym] = value
@@ -67,7 +78,7 @@ module SpeedyAF
     end
 
     def reload
-      dup = SolrPresenter.find(id)
+      dup = Base.find(id)
       @attrs = dup.attrs
       @model = dup.model
       @real_object = nil
@@ -157,7 +168,7 @@ module SpeedyAF
               end
         return ids if ids_only
         query = ActiveFedora::SolrQueryBuilder.construct_query_for_ids(ids)
-        SolrPresenter.where(query, order: -> { ids })
+        Base.where(query, order: -> { ids })
       end
 
       def proxy_ids(reflection)
@@ -177,12 +188,12 @@ module SpeedyAF
       def load_belongs_to_reflection(predicate, ids_only = false)
         id = @attrs[predicate.to_sym]
         return id if ids_only
-        SolrPresenter.find(id)
+        Base.find(id)
       end
 
       def load_has_many_reflection(predicate, ids_only = false)
         query = %(#{predicate}_ssim:#{id})
-        return SolrPresenter.where(query) unless ids_only
+        return Base.where(query) unless ids_only
         docs = ActiveFedora::SolrService.query query, rows: SOLR_ALL
         docs.collect { |doc| doc['id'] }
       end
@@ -191,7 +202,7 @@ module SpeedyAF
         subresource = reflection.name
         docs = ActiveFedora::SolrService.query(%(id:"#{id}/#{subresource}"), rows: 1)
         raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty? || !docs.first.key?('has_model_ssim')
-        @attrs[subresource] = SolrPresenter.from(docs).first
+        @attrs[subresource] = Base.from(docs).first
       end
   end
 end

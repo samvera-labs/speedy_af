@@ -1,7 +1,7 @@
 require 'spec_helper'
 require 'rdf/vocab/dc'
 
-describe SpeedyAF::SolrPresenter do
+describe SpeedyAF::Base do
   before { load_fixture_classes!   }
   after  { unload_fixture_classes! }
 
@@ -101,7 +101,14 @@ describe SpeedyAF::SolrPresenter do
 
     context 'configuration' do
       before do
-        described_class.config Book, defaults: { foo: 'bar!' }, mixins: [DowncaseBehavior]
+        described_class.config Book do
+          include DowncaseBehavior
+          self.defaults = { foo: 'bar!' }
+        end
+
+        described_class.config SpeedySpecs::DeepClass do
+          self.defaults = { baz: 'quux!' }
+        end
       end
 
       it 'adds default values' do
@@ -111,6 +118,10 @@ describe SpeedyAF::SolrPresenter do
       it 'mixes in the mixins' do
         expect(book_presenter.lowercase_title).to eq(book.lowercase_title)
         expect(book_presenter).not_to be_real
+      end
+
+      it 'works with nested classes' do
+        expect(described_class.proxy_class_for(SpeedySpecs::DeepClass)).to eq(SpeedyAF::Proxy::SpeedySpecs::DeepClass)
       end
     end
 
