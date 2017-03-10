@@ -20,10 +20,12 @@ module SpeedyAF
     def self.proxy_class_for(model)
       klass = "::SpeedyAF::Proxy::#{model.name}".safe_constantize
       if klass.nil?
-        (namespace, name) = [model.name.deconstantize, model.name.demodulize]
-        klass = namespace.split(/::/).inject(::SpeedyAF::Proxy) { |mod,ns|
+        namespace = model.name.deconstantize
+        name = model.name.demodulize
+        klass_module = namespace.split(/::/).inject(::SpeedyAF::Proxy) do |mod, ns|
           mod.const_defined?(ns, false) ? mod.const_get(ns, false) : mod.const_set(ns, Module.new)
-        }.const_set(name, Class.new(self))
+        end
+        klass = klass_module.const_set(name, Class.new(self))
       end
       klass
     end
