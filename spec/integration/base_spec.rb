@@ -57,6 +57,10 @@ describe SpeedyAF::Base do
       expect(chapter_presenter.length).to eq(2)
     end
 
+    it '.to_query' do
+      expect(book.to_query('book_id')).to eq("book_id=#{URI.encode(book.id,/[^\-_.!~*'()a-zA-Z\d;?:@&=+$,\[\]]/)}")
+    end
+
     context 'reflections' do
       let!(:library_presenter) { described_class.find(library.id) }
 

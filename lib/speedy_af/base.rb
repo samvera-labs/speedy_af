@@ -87,6 +87,10 @@ module SpeedyAF
       self
     end
 
+    def to_query(key)
+      "#{key}=#{id}"
+    end
+
     def respond_to_missing?(sym, _include_private = false)
       @attrs.key?(sym) ||
         model.reflections[sym].present? ||
