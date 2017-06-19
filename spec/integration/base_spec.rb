@@ -58,7 +58,7 @@ describe SpeedyAF::Base do
     end
 
     it '.to_query' do
-      expect(book.to_query('book_id')).to eq("book_id=#{URI.encode(book.id,/[^\-_.!~*'()a-zA-Z\d;?:@&=+$,\[\]]/)}")
+      expect(book.to_query('book_id')).to eq("book_id=#{URI.encode(book.id, /[^\-_.!~*'()a-zA-Z\d;?:@&=+$,\[\]]/)}")
     end
 
     context 'reflections' do
