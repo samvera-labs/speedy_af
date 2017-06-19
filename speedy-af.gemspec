@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
     'README.md',
     'LICENSE'
   ]
-  s.homepage = 'http://github.com/projecthydra-labs/speedy_af'
+  s.homepage = 'http://github.com/samvera-labs/speedy_af'
   s.licenses = 'APACHE2'
   s.require_paths = ['lib']
   s.rubygems_version = '1.5.2'
