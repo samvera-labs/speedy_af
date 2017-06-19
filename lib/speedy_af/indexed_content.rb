@@ -12,7 +12,7 @@ module SpeedyAF
       solr_doc.tap do |doc|
         doc[:id] = id
         doc[:has_model_ssim] = self.class.name
-        doc[:uri_ss] = uri
+        doc[:uri_ss] = uri.to_s
         doc[:mime_type_ss] = mime_type
         doc[:original_name_ss] = original_name
         doc[:size_is] = content.present? ? content.size : 0
