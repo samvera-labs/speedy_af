@@ -25,7 +25,7 @@ Gem::Specification.new do |s|
   s.test_files    = `git ls-files -- {spec}/*`.split("\n")
 
   s.add_dependency 'active-fedora', ['>= 11.0.0']
-  s.add_dependency 'activesupport'
+  s.add_dependency 'activesupport', '< 5.2'
   s.add_development_dependency 'solr_wrapper', '~> 0.15'
   s.add_development_dependency 'fcrepo_wrapper', '~> 0.2'
   s.add_development_dependency 'simplecov'
