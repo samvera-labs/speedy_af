@@ -1,6 +1,8 @@
 require 'solr_wrapper'
 require 'fcrepo_wrapper'
 require 'active_fedora/rake_support'
+require 'bundler'
+Bundler::GemHelper.install_tasks
 
 require 'rspec/core/rake_task'
 desc 'Run tests only'
