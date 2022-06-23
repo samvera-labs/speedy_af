@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'ostruct'
 
 module SpeedyAF
@@ -120,95 +121,87 @@ module SpeedyAF
 
     protected
 
-      def reflection_for(sym)
-        return nil unless model.respond_to?(:reflections)
-        reflection_name = sym.to_s.sub(/_id(s?)$/, '\1').to_sym
-        model.reflections[reflection_name] || model.reflections[:"#{reflection_name.to_s.singularize}_proxies"]
-      end
+    def reflection_for(sym)
+      return nil unless model.respond_to?(:reflections)
+      reflection_name = sym.to_s.sub(/_id(s?)$/, '\1').to_sym
+      model.reflections[reflection_name] || model.reflections[:"#{reflection_name.to_s.singularize}_proxies"]
+    end
 
-      def parse_solr_field(k, v)
-        # :nocov:
-        transforms = {
-          'dt' => ->(m) { Time.parse(m) },
-          'b'  => ->(m) { m },
-          'db' => ->(m) { m.to_f },
-          'f'  => ->(m) { m.to_f },
-          'i'  => ->(m) { m.to_i },
-          'l'  => ->(m) { m.to_i },
-          nil  => ->(m) { m }
-        }
-        # :nocov:
-        attr_name, type, _stored, _indexed, _multi = k.scan(/^(.+)_(.+)(s)(i?)(m?)$/).first
-        return [k, v] if attr_name.nil?
-        value = Array(v).map { |m| transforms.fetch(type, transforms[nil]).call(m) }
-        value = value.first unless @model.respond_to?(:properties) && multiple?(@model.properties[attr_name])
-        [attr_name, value]
-      end
+    def parse_solr_field(k, v)
+      # :nocov:
+      transforms = {
+        'dt' => ->(m) { Time.parse(m) },
+        'b' => ->(m) { m },
+        'db' => ->(m) { m.to_f },
+        'f' => ->(m) { m.to_f },
+        'i' => ->(m) { m.to_i },
+        'l' => ->(m) { m.to_i },
+        nil => ->(m) { m }
+      }
+      # :nocov:
+      attr_name, type, _stored, _indexed, _multi = k.scan(/^(.+)_(.+)(s)(i?)(m?)$/).first
+      return [k, v] if attr_name.nil?
+      value = Array(v).map { |m| transforms.fetch(type, transforms[nil]).call(m) }
+      value = value.first unless @model.respond_to?(:properties) && multiple?(@model.properties[attr_name])
+      [attr_name, value]
+    end
 
-      def multiple?(prop)
-        prop.present? && prop.respond_to?(:multiple?) && prop.multiple?
-      end
+    def multiple?(prop)
+      prop.present? && prop.respond_to?(:multiple?) && prop.multiple?
+    end
 
-      def load_from_reflection(reflection, ids_only = false)
-        if reflection.options.key?(:through)
-          return load_through_reflection(reflection, ids_only)
-        end
-        if reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr)
-          return load_belongs_to_reflection(reflection.predicate_for_solr, ids_only)
-        end
-        if reflection.has_many? && reflection.respond_to?(:predicate_for_solr)
-          return load_has_many_reflection(reflection.predicate_for_solr, ids_only)
-        end
-        if reflection.is_a?(ActiveFedora::Reflection::HasSubresourceReflection)
-          return load_subresource_content(reflection)
-        end
-        # :nocov:
-        raise NotAvailable, "`#{reflection.name}' cannot be quick-loaded. Falling back to model."
-        # :nocov:
-      end
+    def load_from_reflection(reflection, ids_only = false)
+      return load_through_reflection(reflection, ids_only) if reflection.options.key?(:through)
+      return load_belongs_to_reflection(reflection.predicate_for_solr, ids_only) if reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr)
+      return load_has_many_reflection(reflection.predicate_for_solr, ids_only) if reflection.has_many? && reflection.respond_to?(:predicate_for_solr)
+      return load_subresource_content(reflection) if reflection.is_a?(ActiveFedora::Reflection::HasSubresourceReflection)
+      # :nocov:
+      raise NotAvailable, "`#{reflection.name}' cannot be quick-loaded. Falling back to model."
+      # :nocov:
+    end
 
-      def load_through_reflection(reflection, ids_only = false)
-        ids = case reflection.options[:through]
-              when 'ActiveFedora::Aggregation::Proxy' then proxy_ids(reflection)
-              else subresource_ids(reflection)
-              end
-        return ids if ids_only
-        query = ActiveFedora::SolrQueryBuilder.construct_query_for_ids(ids)
-        Base.where(query, order: -> { ids })
-      end
+    def load_through_reflection(reflection, ids_only = false)
+      ids = case reflection.options[:through]
+            when 'ActiveFedora::Aggregation::Proxy' then proxy_ids(reflection)
+            else subresource_ids(reflection)
+            end
+      return ids if ids_only
+      query = ActiveFedora::SolrQueryBuilder.construct_query_for_ids(ids)
+      Base.where(query, order: -> { ids })
+    end
 
-      def proxy_ids(reflection)
-        docs = ActiveFedora::SolrService.query %(id:#{id}/#{reflection.name}/*), rows: SOLR_ALL
-        docs.collect { |doc| doc['proxyFor_ssim'] }.flatten
-      end
+    def proxy_ids(reflection)
+      docs = ActiveFedora::SolrService.query %(id:#{id}/#{reflection.name}/*), rows: SOLR_ALL
+      docs.collect { |doc| doc['proxyFor_ssim'] }.flatten
+    end
 
-      def subresource_ids(reflection)
-        subresource = reflection.options[:through]
-        docs = ActiveFedora::SolrService.query %(id:"#{id}/#{subresource}"), rows: 1
-        return [] if docs.empty?
-        ids = docs.first['ordered_targets_ssim']
-        return [] if ids.nil?
-        ids
-      end
+    def subresource_ids(reflection)
+      subresource = reflection.options[:through]
+      docs = ActiveFedora::SolrService.query %(id:"#{id}/#{subresource}"), rows: 1
+      return [] if docs.empty?
+      ids = docs.first['ordered_targets_ssim']
+      return [] if ids.nil?
+      ids
+    end
 
-      def load_belongs_to_reflection(predicate, ids_only = false)
-        id = @attrs[predicate.to_sym]
-        return id if ids_only
-        Base.find(id)
-      end
+    def load_belongs_to_reflection(predicate, ids_only = false)
+      id = @attrs[predicate.to_sym]
+      return id if ids_only
+      Base.find(id)
+    end
 
-      def load_has_many_reflection(predicate, ids_only = false)
-        query = %(#{predicate}_ssim:#{id})
-        return Base.where(query) unless ids_only
-        docs = ActiveFedora::SolrService.query query, rows: SOLR_ALL
-        docs.collect { |doc| doc['id'] }
-      end
+    def load_has_many_reflection(predicate, ids_only = false)
+      query = %(#{predicate}_ssim:#{id})
+      return Base.where(query) unless ids_only
+      docs = ActiveFedora::SolrService.query query, rows: SOLR_ALL
+      docs.collect { |doc| doc['id'] }
+    end
 
-      def load_subresource_content(reflection)
-        subresource = reflection.name
-        docs = ActiveFedora::SolrService.query(%(id:"#{id}/#{subresource}"), rows: 1)
-        raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty? || !docs.first.key?('has_model_ssim')
-        @attrs[subresource] = Base.from(docs).first
-      end
+    def load_subresource_content(reflection)
+      subresource = reflection.name
+      docs = ActiveFedora::SolrService.query(%(id:"#{id}/#{subresource}"), rows: 1)
+      raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty? || !docs.first.key?('has_model_ssim')
+      @attrs[subresource] = Base.from(docs).first
+    end
   end
 end

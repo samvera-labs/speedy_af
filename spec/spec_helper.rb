@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 ENV['environment'] ||= 'test'
 require 'bundler/setup'
 
@@ -9,6 +10,8 @@ SimpleCov.start do
   add_filter '/spec/'
 end
 
+require 'byebug'
+require 'rsolr'
 require 'active-fedora'
 require 'speedy_af'
 require 'rspec'
@@ -17,12 +20,10 @@ require 'rspec/its'
 require 'active_fedora/cleaner'
 RSpec.configure do |config|
   # Stub out test stuff.
-  config.before(:each) do
-    begin
-      ActiveFedora::Cleaner.clean!
-    rescue Faraday::ConnectionFailed, RSolr::Error::ConnectionRefused => e
-      $stderr.puts e.message
-    end
+  config.before do
+    ActiveFedora::Cleaner.clean!
+  rescue Faraday::ConnectionFailed, RSolr::Error::ConnectionRefused => e
+    $stderr.puts e.message
   end
 end
 

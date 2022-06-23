@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module SpeedyAF
   module IndexedContent
     extend ActiveSupport::Concern
@@ -16,7 +17,7 @@ module SpeedyAF
         doc[:mime_type_ss] = mime_type
         doc[:original_name_ss] = original_name
         doc[:size_is] = content.present? ? content.size : 0
-        doc[:'empty?_bs'] = content.nil? || content.empty?
+        doc[:'empty?_bs'] = content.blank?
         doc[:content_ss] = content if index_content?
       end
     end
@@ -27,8 +28,8 @@ module SpeedyAF
 
     protected
 
-      def index_content?
-        has_content? && mime_type =~ /(^text\/)|([\/\+]xml$)/ && size < MAX_CONTENT_SIZE && content !~ /\x00/
-      end
+    def index_content?
+      has_content? && mime_type =~ /(^text\/)|([\/\+]xml$)/ && size < MAX_CONTENT_SIZE && content !~ /\x00/
+    end
   end
 end
