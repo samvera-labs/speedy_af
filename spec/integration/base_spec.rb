@@ -88,6 +88,19 @@ describe SpeedyAF::Base do
         expect(ipsum_presenter).not_to be_real
       end
 
+      context 'preloaded subresources' do
+        let(:book_presenter) { described_class.find(book.id, load_subresources: true) }
+
+        it 'has already loaded indexed subresources' do
+          expect(book_presenter.attrs).to include :indexed_file
+          expect(ActiveFedora::SolrService).not_to receive(:query)
+          ipsum_presenter = book_presenter.indexed_file
+          expect(ipsum_presenter.model).to eq(IndexedFile)
+          expect(ipsum_presenter.content).to eq(indexed_content)
+          expect(ipsum_presenter).not_to be_real
+        end
+      end
+
       it 'loads has_many reflections' do
         library.books.create(title: 'Ordered Things II')
         library.save

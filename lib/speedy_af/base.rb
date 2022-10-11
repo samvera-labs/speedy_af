@@ -45,11 +45,21 @@ module SpeedyAF
       from(docs, opts)
     end
 
+    def self.for(doc, opts = {})
+      proxy = proxy_class_for(model_for(doc))
+      proxy.new(doc, opts[:defaults])
+    end
+
     def self.from(docs, opts = {})
       hash = docs.each_with_object({}) do |doc, h|
-        proxy = proxy_class_for(model_for(doc))
-        h[doc['id']] = proxy.new(doc, opts[:defaults])
+        h[doc['id']] = self.for(doc, opts)
       end
+
+      if opts[:load_subresources]
+        subresources_hash = gather_subresources(hash, opts)
+        subresources_hash.each { |parent_id, subresources| hash[parent_id].attrs.merge!(subresources) }
+      end
+
       return hash.values if opts[:order].nil?
       opts[:order].call.collect { |id| hash[id] }.to_a
     end
@@ -117,6 +127,10 @@ module SpeedyAF
         return real_object.send(sym, *args)
       end
       super
+    end
+
+    def subresource_reflections
+      @subresource_reflections ||= model.reflections.select { |name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }.keys
     end
 
     protected
@@ -202,6 +216,21 @@ module SpeedyAF
       docs = ActiveFedora::SolrService.query(%(id:"#{id}/#{subresource}"), rows: 1)
       raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty? || !docs.first.key?('has_model_ssim')
       @attrs[subresource] = Base.from(docs).first
+    end
+
+    def self.gather_subresources(proxy_hash, opts)
+      query = proxy_hash.collect do |id, proxy|
+        proxy.subresource_reflections.collect { |name| "id:#{id}/#{name}" }
+      end.flatten.join(" OR ")
+      docs = ActiveFedora::SolrService.query query, rows: SOLR_ALL
+
+      docs.each_with_object({}) do |doc, hash|
+        parent_id = proxy_hash.keys.find { |id| doc['id'].start_with? id }
+        next unless parent_id
+        subresource_id = proxy_hash[parent_id].subresource_reflections.find { |name| doc['id'] == "#{parent_id}/#{name}" }
+        hash[parent_id] ||= {}
+        hash[parent_id][subresource_id.to_sym] = self.for(doc, opts)
+      end
     end
   end
 end
