@@ -56,8 +56,8 @@ module SpeedyAF
       end
 
       if opts[:load_subresources]
-        subresources_hash = gather_subresources(hash, opts)
-        subresources_hash.each { |parent_id, subresources| hash[parent_id].attrs.merge!(subresources) }
+        reflections_hash = gather_reflections(hash, opts)
+        reflections_hash.each { |parent_id, reflections| hash[parent_id].attrs.merge!(reflections) }
       end
 
       return hash.values if opts[:order].nil?
@@ -130,7 +130,15 @@ module SpeedyAF
     end
 
     def subresource_reflections
-      @subresource_reflections ||= model.reflections.select { |name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }.keys
+      @subresource_reflections ||= model.reflections.select { |name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }
+    end
+
+    def has_many_reflections
+      @has_many_reflections ||= model.reflections.select { |name, reflection| reflection.has_many? && reflection.respond_to?(:predicate_for_solr) }
+    end
+
+    def belongs_to_reflections
+      @belongs_to_reflections ||= model.reflections.select { |name, reflection| reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr) }
     end
 
     protected
@@ -218,16 +226,70 @@ module SpeedyAF
       @attrs[subresource] = Base.from(docs).first
     end
 
-    def self.gather_subresources(proxy_hash, opts)
-      query = proxy_hash.collect do |id, proxy|
-        proxy.subresource_reflections.collect { |name| "id:#{id}/#{name}" }
-      end.flatten.join(" OR ")
+    def self.gather_reflections(proxy_hash, opts)
+      query = [query_for_belongs_to(proxy_hash, opts), query_for_has_many(proxy_hash, opts), query_for_subresources(proxy_hash, opts)].reject(&:blank?).join(" OR ")
       docs = ActiveFedora::SolrService.query query, rows: SOLR_ALL
 
+      reflections = {}
+      reflections.deep_merge!(gather_belongs_to(docs, proxy_hash, opts))
+      reflections.deep_merge!(gather_has_many(docs, proxy_hash, opts))
+      reflections.deep_merge!(gather_subresources(docs, proxy_hash, opts))
+      reflections
+    end
+
+    def self.query_for_belongs_to(proxy_hash, opts)
+      proxy_hash.collect do |id, proxy|
+        proxy.belongs_to_reflections.collect { |_name, reflection| "id:#{proxy.attrs[reflection.predicate_for_solr.to_sym]}" }
+      end.flatten.join(" OR ")
+    end
+
+    def self.gather_belongs_to(docs, proxy_hash, opts)
+      hash = {}
+      proxy_hash.each do |id, proxy|
+        proxy.belongs_to_reflections.each do |name, reflection|
+          docs.each do |doc|
+            next unless doc['id'] == proxy.attrs[reflection.predicate_for_solr.to_sym]
+            hash[id] ||= {}
+            hash[id][name] = self.for(doc, opts)
+          end
+        end
+      end
+      hash
+    end
+
+    def self.query_for_has_many(proxy_hash, opts)
+      proxy_hash.collect do |id, proxy|
+        proxy.has_many_reflections.collect { |_name, reflection| "#{reflection.predicate_for_solr}_ssim:#{id}" }
+      end.flatten.join(" OR ")
+    end
+
+    def self.gather_has_many(docs, proxy_hash, opts)
+      hash = {}
+      proxy_hash.each do |id, proxy|
+        proxy.has_many_reflections.each do |name, reflection|
+          docs.each do |doc|
+            next unless doc.keys.include?("#{reflection.predicate_for_solr}_ssim")
+            hash[id] ||= {}
+            hash[id][name] ||= []
+            hash[id][name] << self.for(doc, opts)
+          end
+        end
+      end
+      hash
+    end
+
+    def self.query_for_subresources(proxy_hash, opts)
+      proxy_hash.collect do |id, proxy|
+        proxy.subresource_reflections.collect { |name, _reflection| "id:#{id}/#{name}" }
+      end.flatten.join(" OR ")
+    end
+
+    def self.gather_subresources(docs, proxy_hash, opts)
       docs.each_with_object({}) do |doc, hash|
         parent_id = proxy_hash.keys.find { |id| doc['id'].start_with? id }
         next unless parent_id
-        subresource_id = proxy_hash[parent_id].subresource_reflections.find { |name| doc['id'] == "#{parent_id}/#{name}" }
+        subresource_id = proxy_hash[parent_id].subresource_reflections.keys.find { |name| doc['id'] == "#{parent_id}/#{name}" }
+        next unless subresource_id
         hash[parent_id] ||= {}
         hash[parent_id][subresource_id.to_sym] = self.for(doc, opts)
       end
