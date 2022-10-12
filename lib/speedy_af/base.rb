@@ -7,6 +7,9 @@ module SpeedyAF
 
     SOLR_ALL = 10_000_000
 
+    class_attribute :model_reflections
+    SpeedyAF::Base.model_reflections = {}
+
     attr_reader :attrs, :model
 
     def self.defaults
@@ -134,15 +137,18 @@ module SpeedyAF
     end
 
     def subresource_reflections
-      @subresource_reflections ||= model.reflections.select { |name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }
+      SpeedyAF::Base.model_reflections[model] ||= {}
+      SpeedyAF::Base.model_reflections[model][:subresource] ||= model.reflections.select { |name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }
     end
 
     def has_many_reflections
-      @has_many_reflections ||= model.reflections.select { |name, reflection| reflection.has_many? && reflection.respond_to?(:predicate_for_solr) }
+      SpeedyAF::Base.model_reflections[model] ||= {}
+      SpeedyAF::Base.model_reflections[model][:has_many] ||= model.reflections.select { |name, reflection| reflection.has_many? && reflection.respond_to?(:predicate_for_solr) }
     end
 
     def belongs_to_reflections
-      @belongs_to_reflections ||= model.reflections.select { |name, reflection| reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr) }
+      SpeedyAF::Base.model_reflections[model] ||= {}
+      SpeedyAF::Base.model_reflections[model][:belongs_to] ||= model.reflections.select { |name, reflection| reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr) }
     end
 
     protected
