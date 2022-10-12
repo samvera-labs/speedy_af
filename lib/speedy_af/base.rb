@@ -55,7 +55,7 @@ module SpeedyAF
         h[doc['id']] = self.for(doc, opts)
       end
 
-      if opts[:load_subresources]
+      if opts[:load_reflections]
         reflections_hash = gather_reflections(hash, opts)
         reflections_hash.each { |parent_id, reflections| hash[parent_id].attrs.merge!(reflections) }
       end

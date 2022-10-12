@@ -89,7 +89,7 @@ describe SpeedyAF::Base do
       end
 
       context 'preloaded subresources' do
-        let(:book_presenter) { described_class.find(book.id, load_subresources: true) }
+        let(:book_presenter) { described_class.find(book.id, load_reflections: true) }
 
         it 'has already loaded indexed subresources' do
           expect(book_presenter.attrs).to include :indexed_file
