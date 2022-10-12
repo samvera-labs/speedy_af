@@ -251,6 +251,7 @@ module SpeedyAF
             next unless doc['id'] == proxy.attrs[reflection.predicate_for_solr.to_sym]
             hash[id] ||= {}
             hash[id][name] = self.for(doc, opts)
+            hash[id]["#{name}_id".to_sym] = doc.id
           end
         end
       end
@@ -272,6 +273,8 @@ module SpeedyAF
             hash[id] ||= {}
             hash[id][name] ||= []
             hash[id][name] << self.for(doc, opts)
+            hash[id]["#{name}_ids".to_sym] ||= []
+            hash[id]["#{name}_ids".to_sym] << doc.id
           end
         end
       end
@@ -292,6 +295,7 @@ module SpeedyAF
         next unless subresource_id
         hash[parent_id] ||= {}
         hash[parent_id][subresource_id.to_sym] = self.for(doc, opts)
+        hash[parent_id]["#{subresource_id}_id".to_sym] = doc.id
       end
     end
   end
