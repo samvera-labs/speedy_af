@@ -111,7 +111,11 @@ module SpeedyAF
     def method_missing(sym, *args)
       return real_object.send(sym, *args) if real?
 
-      return @attrs[sym] if @attrs.key?(sym)
+      if @attrs.key?(sym)
+        # Lazy convert the solr document into a speedy_af proxy object
+        @attrs[sym] = SpeedyAF::Base.for(@attrs[sym]) if @attrs[sym].is_a?(ActiveFedora::SolrHit)
+        return @attrs[sym]
+      end
 
       reflection = reflection_for(sym)
       unless reflection.nil?
@@ -250,7 +254,7 @@ module SpeedyAF
           docs.each do |doc|
             next unless doc['id'] == proxy.attrs[reflection.predicate_for_solr.to_sym]
             hash[id] ||= {}
-            hash[id][name] = self.for(doc, opts)
+            hash[id][name] = doc
             hash[id]["#{name}_id".to_sym] = doc.id
           end
         end
@@ -272,7 +276,7 @@ module SpeedyAF
             next unless doc.keys.include?("#{reflection.predicate_for_solr}_ssim")
             hash[id] ||= {}
             hash[id][name] ||= []
-            hash[id][name] << self.for(doc, opts)
+            hash[id][name] << doc
             hash[id]["#{name}_ids".to_sym] ||= []
             hash[id]["#{name}_ids".to_sym] << doc.id
           end
@@ -294,7 +298,7 @@ module SpeedyAF
         subresource_id = proxy_hash[parent_id].subresource_reflections.keys.find { |name| doc['id'] == "#{parent_id}/#{name}" }
         next unless subresource_id
         hash[parent_id] ||= {}
-        hash[parent_id][subresource_id.to_sym] = self.for(doc, opts)
+        hash[parent_id][subresource_id.to_sym] = doc
         hash[parent_id]["#{subresource_id}_id".to_sym] = doc.id
       end
     end
