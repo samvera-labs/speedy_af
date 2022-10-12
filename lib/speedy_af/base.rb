@@ -273,7 +273,7 @@ module SpeedyAF
       proxy_hash.each do |id, proxy|
         proxy.has_many_reflections.each do |name, reflection|
           docs.each do |doc|
-            next unless doc.keys.include?("#{reflection.predicate_for_solr}_ssim")
+            next unless Array(doc["#{reflection.predicate_for_solr}_ssim"]).include?(id)
             hash[id] ||= {}
             hash[id][name] ||= []
             hash[id][name] << doc
