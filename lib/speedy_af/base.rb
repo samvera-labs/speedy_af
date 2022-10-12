@@ -7,8 +7,9 @@ module SpeedyAF
 
     SOLR_ALL = 10_000_000
 
-    class_attribute :model_reflections
-    SpeedyAF::Base.model_reflections = {}
+    class_attribute :model_reflections, :reflection_predicates
+    SpeedyAF::Base.model_reflections = { belongs_to: {}, has_many: {}, subresource: {} }
+    SpeedyAF::Base.reflection_predicates = {}
 
     attr_reader :attrs, :model
 
@@ -137,18 +138,19 @@ module SpeedyAF
     end
 
     def subresource_reflections
-      SpeedyAF::Base.model_reflections[model] ||= {}
-      SpeedyAF::Base.model_reflections[model][:subresource] ||= model.reflections.select { |name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }
+      SpeedyAF::Base.model_reflections[:subresource][model] ||= model.reflections.select { |name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }
     end
 
     def has_many_reflections
-      SpeedyAF::Base.model_reflections[model] ||= {}
-      SpeedyAF::Base.model_reflections[model][:has_many] ||= model.reflections.select { |name, reflection| reflection.has_many? && reflection.respond_to?(:predicate_for_solr) }
+      SpeedyAF::Base.model_reflections[:has_many][model] ||= model.reflections.select { |name, reflection| reflection.has_many? && reflection.respond_to?(:predicate_for_solr) }
     end
 
     def belongs_to_reflections
-      SpeedyAF::Base.model_reflections[model] ||= {}
-      SpeedyAF::Base.model_reflections[model][:belongs_to] ||= model.reflections.select { |name, reflection| reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr) }
+      SpeedyAF::Base.model_reflections[:belongs_to][model] ||= model.reflections.select { |name, reflection| reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr) }
+    end
+
+    def self.predicate_for_reflection(reflection)
+      SpeedyAF::Base.reflection_predicates[reflection.name] ||= reflection.predicate_for_solr
     end
 
     protected
@@ -249,20 +251,19 @@ module SpeedyAF
 
     def self.query_for_belongs_to(proxy_hash, opts)
       proxy_hash.collect do |id, proxy|
-        proxy.belongs_to_reflections.collect { |_name, reflection| "id:#{proxy.attrs[reflection.predicate_for_solr.to_sym]}" }
+        proxy.belongs_to_reflections.collect { |_name, reflection| "id:#{proxy.attrs[self.predicate_for_reflection(reflection).to_sym]}" }
       end.flatten.join(" OR ")
     end
 
     def self.gather_belongs_to(docs, proxy_hash, opts)
       hash = {}
-      proxy_hash.each do |id, proxy|
+      proxy_hash.each do |proxy_id, proxy|
         proxy.belongs_to_reflections.each do |name, reflection|
-          docs.each do |doc|
-            next unless doc['id'] == proxy.attrs[reflection.predicate_for_solr.to_sym]
-            hash[id] ||= {}
-            hash[id][name] = doc
-            hash[id]["#{name}_id".to_sym] = doc.id
-          end
+          doc = docs.find { |doc| doc.id == proxy.attrs[self.predicate_for_reflection(reflection).to_sym] }
+          next unless doc
+          hash[proxy_id] ||= {}
+          hash[proxy_id][name] = doc
+          hash[proxy_id]["#{name}_id".to_sym] = doc.id
         end
       end
       hash
@@ -270,21 +271,22 @@ module SpeedyAF
 
     def self.query_for_has_many(proxy_hash, opts)
       proxy_hash.collect do |id, proxy|
-        proxy.has_many_reflections.collect { |_name, reflection| "#{reflection.predicate_for_solr}_ssim:#{id}" }
+        proxy.has_many_reflections.collect { |_name, reflection| "#{self.predicate_for_reflection(reflection)}_ssim:#{id}" }
       end.flatten.join(" OR ")
     end
 
     def self.gather_has_many(docs, proxy_hash, opts)
       hash = {}
-      proxy_hash.each do |id, proxy|
-        proxy.has_many_reflections.each do |name, reflection|
-          docs.each do |doc|
-            next unless Array(doc["#{reflection.predicate_for_solr}_ssim"]).include?(id)
-            hash[id] ||= {}
-            hash[id][name] ||= []
-            hash[id][name] << doc
-            hash[id]["#{name}_ids".to_sym] ||= []
-            hash[id]["#{name}_ids".to_sym] << doc.id
+      has_many_reflections = SpeedyAF::Base.model_reflections[:has_many].values.reduce(:merge)
+      docs.each do |doc|
+        has_many_reflections.each do |name, reflection|
+          Array(doc["#{self.predicate_for_reflection(reflection)}_ssim"]).each do |proxy_id|
+            next unless proxy_hash.key?(proxy_id)
+            hash[proxy_id] ||= {}
+            hash[proxy_id][name] ||= []
+            hash[proxy_id][name] << doc
+            hash[proxy_id]["#{name}_ids".to_sym] ||= []
+            hash[proxy_id]["#{name}_ids".to_sym] << doc.id
           end
         end
       end
@@ -299,13 +301,14 @@ module SpeedyAF
 
     def self.gather_subresources(docs, proxy_hash, opts)
       docs.each_with_object({}) do |doc, hash|
-        parent_id = proxy_hash.keys.find { |id| doc['id'].start_with? id }
+        doc_id = doc.id
+        parent_id = proxy_hash.keys.find { |id| doc_id.start_with? id }
         next unless parent_id
-        subresource_id = proxy_hash[parent_id].subresource_reflections.keys.find { |name| doc['id'] == "#{parent_id}/#{name}" }
+        subresource_id = proxy_hash[parent_id].subresource_reflections.keys.find { |name| doc_id == "#{parent_id}/#{name}" }
         next unless subresource_id
         hash[parent_id] ||= {}
         hash[parent_id][subresource_id.to_sym] = doc
-        hash[parent_id]["#{subresource_id}_id".to_sym] = doc.id
+        hash[parent_id]["#{subresource_id}_id".to_sym] = doc_id
       end
     end
   end
