@@ -13,63 +13,145 @@ module SpeedyAF
 
     attr_reader :attrs, :model
 
-    def self.defaults
-      @defaults ||= {}
-    end
+    class << self
+      def defaults
+        @defaults ||= {}
+      end
 
-    def self.defaults=(value)
-      raise ArgumentError unless value.respond_to?(:merge)
-      @defaults = value
-    end
+      def defaults=(value)
+        raise ArgumentError unless value.respond_to?(:merge)
+        @defaults = value
+      end
 
-    def self.proxy_class_for(model)
-      klass = "::SpeedyAF::Proxy::#{model.name}".safe_constantize
-      if klass.nil?
-        namespace = model.name.deconstantize
-        name = model.name.demodulize
-        klass_module = namespace.split(/::/).inject(::SpeedyAF::Proxy) do |mod, ns|
-          mod.const_defined?(ns, false) ? mod.const_get(ns, false) : mod.const_set(ns, Module.new)
+      def proxy_class_for(model)
+        klass = "::SpeedyAF::Proxy::#{model.name}".safe_constantize
+        if klass.nil?
+          namespace = model.name.deconstantize
+          name = model.name.demodulize
+          klass_module = namespace.split(/::/).inject(::SpeedyAF::Proxy) do |mod, ns|
+            mod.const_defined?(ns, false) ? mod.const_get(ns, false) : mod.const_set(ns, Module.new)
+          end
+          klass = klass_module.const_set(name, Class.new(self))
         end
-        klass = klass_module.const_set(name, Class.new(self))
-      end
-      klass
-    end
-
-    def self.config(model, &block)
-      proxy_class = proxy_class_for(model) { Class.new(self) }
-      proxy_class.class_eval(&block) if block_given?
-    end
-
-    def self.find(id, opts = {})
-      where(%(id:"#{id}"), opts).first
-    end
-
-    def self.where(query, opts = {})
-      docs = ActiveFedora::SolrService.query(query, rows: SOLR_ALL)
-      from(docs, opts)
-    end
-
-    def self.for(doc, opts = {})
-      proxy = proxy_class_for(model_for(doc))
-      proxy.new(doc, opts[:defaults])
-    end
-
-    def self.from(docs, opts = {})
-      hash = docs.each_with_object({}) do |doc, h|
-        h[doc['id']] = self.for(doc, opts)
+        klass
       end
 
-      if opts[:load_reflections]
-        reflections_hash = gather_reflections(hash, opts)
-        reflections_hash.each { |parent_id, reflections| hash[parent_id].attrs.merge!(reflections) }
+      def config(model, &block)
+        proxy_class = proxy_class_for(model) { Class.new(self) }
+        proxy_class.class_eval(&block) if block_given?
       end
 
-      return hash.values if opts[:order].nil?
-      opts[:order].call.collect { |id| hash[id] }.to_a
-    end
+      def find(id, opts = {})
+        where(%(id:"#{id}"), opts).first
+      end
 
-    def self.model_for(solr_document)
-      solr_document[:has_model_ssim].first.safe_constantize
+      def where(query, opts = {})
+        docs = ActiveFedora::SolrService.query(query, rows: SOLR_ALL)
+        from(docs, opts)
+      end
+
+      def for(doc, opts = {})
+        proxy = proxy_class_for(model_for(doc))
+        proxy.new(doc, opts[:defaults])
+      end
+
+      def from(docs, opts = {})
+        hash = docs.each_with_object({}) do |doc, h|
+          h[doc['id']] = self.for(doc, opts)
+        end
+
+        if opts[:load_reflections]
+          reflections_hash = gather_reflections(hash, opts)
+          reflections_hash.each { |parent_id, reflections| hash[parent_id].attrs.merge!(reflections) }
+        end
+
+        return hash.values if opts[:order].nil?
+        opts[:order].call.collect { |id| hash[id] }.to_a
+      end
+
+      def model_for(solr_document)
+        solr_document[:has_model_ssim].first.safe_constantize
+      end
+
+      protected
+
+      def predicate_for_reflection(reflection)
+        SpeedyAF::Base.reflection_predicates[reflection.name] ||= reflection.predicate_for_solr
+      end
+
+      def gather_reflections(proxy_hash, opts)
+        query = [query_for_belongs_to(proxy_hash, opts), query_for_has_many(proxy_hash, opts), query_for_subresources(proxy_hash, opts)].reject(&:blank?).join(" OR ")
+        docs = ActiveFedora::SolrService.query query, rows: SOLR_ALL
+
+        reflections = {}
+        reflections.deep_merge!(gather_belongs_to(docs, proxy_hash, opts))
+        reflections.deep_merge!(gather_has_many(docs, proxy_hash, opts))
+        reflections.deep_merge!(gather_subresources(docs, proxy_hash, opts))
+        reflections
+      end
+
+      def query_for_belongs_to(proxy_hash, _opts)
+        proxy_hash.collect do |_id, proxy|
+          proxy.belongs_to_reflections.collect { |_name, reflection| "id:#{proxy.attrs[predicate_for_reflection(reflection).to_sym]}" }
+        end.flatten.join(" OR ")
+      end
+
+      def gather_belongs_to(docs, proxy_hash, _opts)
+        hash = {}
+        proxy_hash.each do |proxy_id, proxy|
+          proxy.belongs_to_reflections.each do |name, reflection|
+            doc = docs.find { |d| d.id == proxy.attrs[predicate_for_reflection(reflection).to_sym] }
+            next unless doc
+            hash[proxy_id] ||= {}
+            hash[proxy_id][name] = doc
+            hash[proxy_id]["#{name}_id".to_sym] = doc.id
+          end
+        end
+        hash
+      end
+
+      def query_for_has_many(proxy_hash, _opts)
+        proxy_hash.collect do |id, proxy|
+          proxy.has_many_reflections.collect { |_name, reflection| "#{predicate_for_reflection(reflection)}_ssim:#{id}" }
+        end.flatten.join(" OR ")
+      end
+
+      def gather_has_many(docs, proxy_hash, _opts)
+        hash = {}
+        has_many_reflections = SpeedyAF::Base.model_reflections[:has_many].values.reduce(:merge)
+        docs.each do |doc|
+          has_many_reflections.each do |name, reflection|
+            Array(doc["#{predicate_for_reflection(reflection)}_ssim"]).each do |proxy_id|
+              next unless proxy_hash.key?(proxy_id)
+              hash[proxy_id] ||= {}
+              hash[proxy_id][name] ||= []
+              hash[proxy_id][name] << doc
+              hash[proxy_id]["#{name}_ids".to_sym] ||= []
+              hash[proxy_id]["#{name}_ids".to_sym] << doc.id
+            end
+          end
+        end
+        hash
+      end
+
+      def query_for_subresources(proxy_hash, _opts)
+        proxy_hash.collect do |id, proxy|
+          proxy.subresource_reflections.collect { |name, _reflection| "id:#{id}/#{name}" }
+        end.flatten.join(" OR ")
+      end
+
+      def gather_subresources(docs, proxy_hash, _opts)
+        docs.each_with_object({}) do |doc, hash|
+          doc_id = doc.id
+          parent_id = proxy_hash.keys.find { |id| doc_id.start_with? id }
+          next unless parent_id
+          subresource_id = proxy_hash[parent_id].subresource_reflections.keys.find { |name| doc_id == "#{parent_id}/#{name}" }
+          next unless subresource_id
+          hash[parent_id] ||= {}
+          hash[parent_id][subresource_id.to_sym] = doc
+          hash[parent_id]["#{subresource_id}_id".to_sym] = doc_id
+        end
+      end
     end
 
     def initialize(solr_document, instance_defaults = {})
@@ -138,19 +220,17 @@ module SpeedyAF
     end
 
     def subresource_reflections
-      SpeedyAF::Base.model_reflections[:subresource][model] ||= model.reflections.select { |name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }
+      SpeedyAF::Base.model_reflections[:subresource][model] ||= model.reflections.select { |_name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }
     end
 
+    # rubocop:disable Naming/PredicateName
     def has_many_reflections
-      SpeedyAF::Base.model_reflections[:has_many][model] ||= model.reflections.select { |name, reflection| reflection.has_many? && reflection.respond_to?(:predicate_for_solr) }
+      SpeedyAF::Base.model_reflections[:has_many][model] ||= model.reflections.select { |_name, reflection| reflection.has_many? && reflection.respond_to?(:predicate_for_solr) }
     end
+    # rubocop:enable Naming/PredicateName
 
     def belongs_to_reflections
-      SpeedyAF::Base.model_reflections[:belongs_to][model] ||= model.reflections.select { |name, reflection| reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr) }
-    end
-
-    def self.predicate_for_reflection(reflection)
-      SpeedyAF::Base.reflection_predicates[reflection.name] ||= reflection.predicate_for_solr
+      SpeedyAF::Base.model_reflections[:belongs_to][model] ||= model.reflections.select { |_name, reflection| reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr) }
     end
 
     protected
@@ -236,80 +316,6 @@ module SpeedyAF
       docs = ActiveFedora::SolrService.query(%(id:"#{id}/#{subresource}"), rows: 1)
       raise NotAvailable, "`#{subresource}' is not indexed" if docs.empty? || !docs.first.key?('has_model_ssim')
       @attrs[subresource] = Base.from(docs).first
-    end
-
-    def self.gather_reflections(proxy_hash, opts)
-      query = [query_for_belongs_to(proxy_hash, opts), query_for_has_many(proxy_hash, opts), query_for_subresources(proxy_hash, opts)].reject(&:blank?).join(" OR ")
-      docs = ActiveFedora::SolrService.query query, rows: SOLR_ALL
-
-      reflections = {}
-      reflections.deep_merge!(gather_belongs_to(docs, proxy_hash, opts))
-      reflections.deep_merge!(gather_has_many(docs, proxy_hash, opts))
-      reflections.deep_merge!(gather_subresources(docs, proxy_hash, opts))
-      reflections
-    end
-
-    def self.query_for_belongs_to(proxy_hash, opts)
-      proxy_hash.collect do |id, proxy|
-        proxy.belongs_to_reflections.collect { |_name, reflection| "id:#{proxy.attrs[self.predicate_for_reflection(reflection).to_sym]}" }
-      end.flatten.join(" OR ")
-    end
-
-    def self.gather_belongs_to(docs, proxy_hash, opts)
-      hash = {}
-      proxy_hash.each do |proxy_id, proxy|
-        proxy.belongs_to_reflections.each do |name, reflection|
-          doc = docs.find { |doc| doc.id == proxy.attrs[self.predicate_for_reflection(reflection).to_sym] }
-          next unless doc
-          hash[proxy_id] ||= {}
-          hash[proxy_id][name] = doc
-          hash[proxy_id]["#{name}_id".to_sym] = doc.id
-        end
-      end
-      hash
-    end
-
-    def self.query_for_has_many(proxy_hash, opts)
-      proxy_hash.collect do |id, proxy|
-        proxy.has_many_reflections.collect { |_name, reflection| "#{self.predicate_for_reflection(reflection)}_ssim:#{id}" }
-      end.flatten.join(" OR ")
-    end
-
-    def self.gather_has_many(docs, proxy_hash, opts)
-      hash = {}
-      has_many_reflections = SpeedyAF::Base.model_reflections[:has_many].values.reduce(:merge)
-      docs.each do |doc|
-        has_many_reflections.each do |name, reflection|
-          Array(doc["#{self.predicate_for_reflection(reflection)}_ssim"]).each do |proxy_id|
-            next unless proxy_hash.key?(proxy_id)
-            hash[proxy_id] ||= {}
-            hash[proxy_id][name] ||= []
-            hash[proxy_id][name] << doc
-            hash[proxy_id]["#{name}_ids".to_sym] ||= []
-            hash[proxy_id]["#{name}_ids".to_sym] << doc.id
-          end
-        end
-      end
-      hash
-    end
-
-    def self.query_for_subresources(proxy_hash, opts)
-      proxy_hash.collect do |id, proxy|
-        proxy.subresource_reflections.collect { |name, _reflection| "id:#{id}/#{name}" }
-      end.flatten.join(" OR ")
-    end
-
-    def self.gather_subresources(docs, proxy_hash, opts)
-      docs.each_with_object({}) do |doc, hash|
-        doc_id = doc.id
-        parent_id = proxy_hash.keys.find { |id| doc_id.start_with? id }
-        next unless parent_id
-        subresource_id = proxy_hash[parent_id].subresource_reflections.keys.find { |name| doc_id == "#{parent_id}/#{name}" }
-        next unless subresource_id
-        hash[parent_id] ||= {}
-        hash[parent_id][subresource_id.to_sym] = doc
-        hash[parent_id]["#{subresource_id}_id".to_sym] = doc_id
-      end
     end
   end
 end

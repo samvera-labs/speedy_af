@@ -11,11 +11,15 @@
 # ExcludedMethods: refine
 Metrics/BlockLength:
   Max: 143
+  Exclude:
+    - 'spec/**/*_spec.rb'
 
 # Offense count: 1
 # Configuration parameters: CountComments.
 Metrics/ClassLength:
   Max: 165
+  Exclude:
+    - 'lib/speedy_af/base.rb'
 
 # Offense count: 1
 # Configuration parameters: IgnoredMethods.
@@ -25,7 +29,7 @@ Metrics/CyclomaticComplexity:
 # Offense count: 1
 # Configuration parameters: CountComments, ExcludedMethods.
 Metrics/MethodLength:
-  Max: 15
+  Max: 20
 
 # Offense count: 1
 # Configuration parameters: ExpectMatchingDefinition, CheckDefinitionPathHierarchy, Regex, IgnoreExecutableScripts, AllowedAcronyms.

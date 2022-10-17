@@ -93,11 +93,12 @@ describe SpeedyAF::Base do
 
         it 'has already loaded indexed subresources' do
           expect(book_presenter.attrs).to include :indexed_file
-          expect(ActiveFedora::SolrService).not_to receive(:query)
+          allow(ActiveFedora::SolrService).to receive(:query).and_call_original
           ipsum_presenter = book_presenter.indexed_file
           expect(ipsum_presenter.model).to eq(IndexedFile)
           expect(ipsum_presenter.content).to eq(indexed_content)
           expect(ipsum_presenter).not_to be_real
+          expect(ActiveFedora::SolrService).not_to have_received(:query)
         end
       end
 
