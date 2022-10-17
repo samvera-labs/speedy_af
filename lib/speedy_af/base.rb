@@ -126,8 +126,8 @@ module SpeedyAF
               hash[proxy_id] ||= {}
               hash[proxy_id][name] ||= []
               hash[proxy_id][name] << doc
-              hash[proxy_id]["#{name}_ids".to_sym] ||= []
-              hash[proxy_id]["#{name}_ids".to_sym] << doc.id
+              hash[proxy_id]["#{name.to_s.singularize}_ids".to_sym] ||= []
+              hash[proxy_id]["#{name.to_s.singularize}_ids".to_sym] << doc.id
             end
           end
         end
@@ -200,6 +200,7 @@ module SpeedyAF
       if @attrs.key?(sym)
         # Lazy convert the solr document into a speedy_af proxy object
         @attrs[sym] = SpeedyAF::Base.for(@attrs[sym]) if @attrs[sym].is_a?(ActiveFedora::SolrHit)
+        @attrs[sym] = @attrs[sym].map { |doc| SpeedyAF::Base.for(doc) } if @attrs[sym].is_a?(Array) && @attrs[sym].all? { |d| d.is_a?(ActiveFedora::SolrHit) }
         return @attrs[sym]
       end
 

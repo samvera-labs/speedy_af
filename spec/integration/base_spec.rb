@@ -88,20 +88,6 @@ describe SpeedyAF::Base do
         expect(ipsum_presenter).not_to be_real
       end
 
-      context 'preloaded subresources' do
-        let(:book_presenter) { described_class.find(book.id, load_reflections: true) }
-
-        it 'has already loaded indexed subresources' do
-          expect(book_presenter.attrs).to include :indexed_file
-          allow(ActiveFedora::SolrService).to receive(:query).and_call_original
-          ipsum_presenter = book_presenter.indexed_file
-          expect(ipsum_presenter.model).to eq(IndexedFile)
-          expect(ipsum_presenter.content).to eq(indexed_content)
-          expect(ipsum_presenter).not_to be_real
-          expect(ActiveFedora::SolrService).not_to have_received(:query)
-        end
-      end
-
       it 'loads has_many reflections' do
         library.books.create(title: 'Ordered Things II')
         library.save
@@ -117,6 +103,45 @@ describe SpeedyAF::Base do
         expect(book_presenter.library).to be_a(described_class)
         expect(book_presenter.library.model).to eq(library.class)
         expect(book_presenter).not_to be_real
+      end
+
+      context 'preloaded subresources' do
+        let(:book_presenter) { described_class.find(book.id, load_reflections: true) }
+
+        it 'has already loaded indexed subresources' do
+          expect(book_presenter.attrs).to include :indexed_file
+          allow(ActiveFedora::SolrService).to receive(:query).and_call_original
+          ipsum_presenter = book_presenter.indexed_file
+          expect(ipsum_presenter.model).to eq(IndexedFile)
+          expect(ipsum_presenter.content).to eq(indexed_content)
+          expect(ipsum_presenter).not_to be_real
+          expect(ActiveFedora::SolrService).not_to have_received(:query)
+        end
+
+        it 'has already loaded has_many reflections' do
+          library.books.create(title: 'Ordered Things II')
+          library.save
+          book_ids = library.book_ids
+          library_presenter = described_class.find(library.id, load_reflections: true)
+          expect(library_presenter.attrs).to include :books
+          allow(ActiveFedora::SolrService).to receive(:query).and_call_original
+          presenter = library_presenter.books
+          expect(presenter.length).to eq(2)
+          expect(presenter.all? { |bp| bp.is_a?(described_class) }).to be_truthy
+          expect(library_presenter.book_ids).to match_array(book_ids)
+          expect(library_presenter).not_to be_real
+          expect(ActiveFedora::SolrService).not_to have_received(:query)
+        end
+
+        it 'has already loaded belongs_to reflections' do
+          expect(book_presenter.attrs).to include :library
+          allow(ActiveFedora::SolrService).to receive(:query).and_call_original
+          expect(book_presenter.library_id).to eq(library.id)
+          expect(book_presenter.library).to be_a(described_class)
+          expect(book_presenter.library.model).to eq(library.class)
+          expect(book_presenter).not_to be_real
+          expect(ActiveFedora::SolrService).not_to have_received(:query)
+        end
       end
     end
 
