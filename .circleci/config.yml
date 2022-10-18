@@ -17,7 +17,7 @@ jobs:
     executor:
       name: 'samvera/ruby_fcrepo_solr'
       ruby_version: << parameters.ruby_version >>
-      solr_version: 7-alpine
+      solr_version: 8-slim
     environment:
       RAILS_VERSION: << parameters.rails_version >>
     working_directory: ~/project
