@@ -5,6 +5,15 @@ require 'active_fedora/rake_support'
 require 'bundler'
 Bundler::GemHelper.install_tasks
 
+# This is to fix a breaking change with Ruby 3.2 where some methods
+# in fcrepo_wrapper use the removed `File.exists?` alias, preventing
+# tests from being set up.
+class File
+  class << self
+    alias exists? exist?
+  end
+end
+
 require 'rspec/core/rake_task'
 desc 'Run tests only'
 RSpec::Core::RakeTask.new(:rspec) do |spec|
