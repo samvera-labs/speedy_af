@@ -93,8 +93,8 @@ module SpeedyAF
       def query_for_belongs_to(proxy_hash, _opts)
         proxy_hash.collect do |_id, proxy|
           proxy.belongs_to_reflections.collect do |_name, reflection|
-            next if proxy.attrs[predicate_for_reflection(reflection).to_sym].blank?
-            "id:#{proxy.attrs[predicate_for_reflection(reflection).to_sym]}"
+            id = proxy.attrs[predicate_for_reflection(reflection).to_sym]
+            id.blank? ? nil : "id:#{id}"
           end.compact
         end.flatten.join(" OR ")
       end
