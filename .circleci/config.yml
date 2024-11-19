@@ -10,7 +10,7 @@ jobs:
         type: string
       bundler_version:
         type: string
-        default: 2.0.2
+        default: 2.5.18
       ffmpeg_version:
         type: string
         default: 4.1.4
@@ -38,18 +38,22 @@ workflows:
   ci:
     jobs:
       - bundle_and_test:
-          name: "ruby2-7_rails7-0"
-          ruby_version: "2.7.6"
-          rails_version: "7.0.4"
+          name: "ruby3-3_rails7-2"
+          ruby_version: "3.3.4"
+          rails_version: "7.2.1"
       - bundle_and_test:
-          name: "ruby2-7_rails6-1"
-          ruby_version: "2.7.6"
-          rails_version: "6.1.7"
+          name: "ruby3-2_rails7-1"
+          ruby_version: "3.2.5"
+          rails_version: "7.1.4"
       - bundle_and_test:
-          name: "ruby2-7_rails6-0"
-          ruby_version: "2.7.6"
-          rails_version: "6.0.6"
+          name: "ruby3-1_rails7-1"
+          ruby_version: "3.1.6"
+          rails_version: "7.1.4"
       - bundle_and_test:
-          name: "ruby2-7_rails5-2"
-          ruby_version: "2.7.6"
-          rails_version: "5.2.8.1"
+          name: "ruby3-2_rails7-0"
+          ruby_version: "3.2.5"
+          rails_version: "7.0.8.4"
+      - bundle_and_test:
+          name: "ruby3-1_rails7-0"
+          ruby_version: "3.1.6"
+          rails_version: "7.0.8.4"

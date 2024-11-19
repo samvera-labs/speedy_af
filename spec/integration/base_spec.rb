@@ -61,7 +61,7 @@ describe SpeedyAF::Base do
     end
 
     it '.to_query' do
-      expect(book.to_query('book_id')).to eq("book_id=#{URI.encode(book.id, /[^\-_.!~*'()a-zA-Z\d;?:@&=+$,\[\]]/)}")
+      expect(book.to_query('book_id')).to eq("book_id=#{URI::Parser.new.escape(book.id, /[^\-_.!~*'()a-zA-Z\d;?:@&=+$,\[\]]/)}")
     end
 
     context 'reflections' do
@@ -103,6 +103,15 @@ describe SpeedyAF::Base do
         expect(book_presenter.library).to be_a(described_class)
         expect(book_presenter.library.model).to eq(library.class)
         expect(book_presenter).not_to be_real
+      end
+
+      context 'missing parent id' do
+        let(:book) { Book.new title: 'Ordered Things', publisher: 'ActiveFedora Performance LLC', library: nil }
+        it 'does not cause belongs_to reflections to error' do
+          expect(book_presenter.library_id).to be_nil
+          expect(book_presenter.library).to be_nil
+          expect(book_presenter).not_to be_real
+        end
       end
 
       context 'preloaded subresources' do
