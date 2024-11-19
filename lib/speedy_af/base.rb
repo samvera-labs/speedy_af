@@ -42,11 +42,11 @@ module SpeedyAF
       end
 
       def find(id, opts = {})
-        where(%(id:"#{id}"), opts).first
+        where(%(id:"#{id}"), opts.merge(rows: 1)).first
       end
 
       def where(query, opts = {})
-        docs = ActiveFedora::SolrService.query(query, rows: SOLR_ALL)
+        docs = ActiveFedora::SolrService.query(query, rows: opts[:rows] || SOLR_ALL)
         from(docs, opts)
       end
 
