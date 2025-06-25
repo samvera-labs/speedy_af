@@ -90,9 +90,9 @@ module SpeedyAF
         reflections
       end
 
-      def query_for_belongs_to(proxy_hash, _opts)
+      def query_for_belongs_to(proxy_hash, opts)
         proxy_hash.collect do |_id, proxy|
-          proxy.belongs_to_reflections.collect do |_name, reflection|
+          proxy.belongs_to_reflections(only: opts[:load_reflections]).collect do |_name, reflection|
             id = proxy.attrs[predicate_for_reflection(reflection).to_sym]
             id.blank? ? nil : "id:#{id}"
           end.compact
@@ -113,9 +113,9 @@ module SpeedyAF
         hash
       end
 
-      def query_for_has_many(proxy_hash, _opts)
+      def query_for_has_many(proxy_hash, opts)
         proxy_hash.collect do |id, proxy|
-          proxy.has_many_reflections.collect { |_name, reflection| "#{predicate_for_reflection(reflection)}_ssim:#{id}" }
+          proxy.has_many_reflections(only: opts[:load_reflections]).collect { |_name, reflection| "#{predicate_for_reflection(reflection)}_ssim:#{id}" }
         end.flatten.join(" OR ")
       end
 
@@ -137,9 +137,9 @@ module SpeedyAF
         hash
       end
 
-      def query_for_subresources(proxy_hash, _opts)
+      def query_for_subresources(proxy_hash, opts)
         proxy_hash.collect do |id, proxy|
-          proxy.subresource_reflections.collect { |name, _reflection| "id:#{id}/#{name}" }
+          proxy.subresource_reflections(only: opts[:load_reflections]).collect { |name, _reflection| "id:#{id}/#{name}" }
         end.flatten.join(" OR ")
       end
 
@@ -223,18 +223,33 @@ module SpeedyAF
       super
     end
 
-    def subresource_reflections
+    def subresource_reflections(only: nil)
       SpeedyAF::Base.model_reflections[:subresource][model] ||= model.reflections.select { |_name, reflection| reflection.is_a? ActiveFedora::Reflection::HasSubresourceReflection }
+      if only.is_a?(Array) && only.present?
+        SpeedyAF::Base.model_reflections[:subresource][model].select { |name, _reflection| only.include? name }
+      else
+        SpeedyAF::Base.model_reflections[:subresource][model]
+      end
     end
 
     # rubocop:disable Naming/PredicateName
-    def has_many_reflections
+    def has_many_reflections(only: nil)
       SpeedyAF::Base.model_reflections[:has_many][model] ||= model.reflections.select { |_name, reflection| reflection.has_many? && reflection.respond_to?(:predicate_for_solr) }
+      if only.is_a?(Array) && only.present?
+        SpeedyAF::Base.model_reflections[:has_many][model].select { |name, _reflection| only.include? name }
+      else
+        SpeedyAF::Base.model_reflections[:has_many][model]
+      end
     end
     # rubocop:enable Naming/PredicateName
 
-    def belongs_to_reflections
+    def belongs_to_reflections(only: nil)
       SpeedyAF::Base.model_reflections[:belongs_to][model] ||= model.reflections.select { |_name, reflection| reflection.belongs_to? && reflection.respond_to?(:predicate_for_solr) }
+      if only.is_a?(Array) && only.present?
+        SpeedyAF::Base.model_reflections[:belongs_to][model].select { |name, _reflection| only.include? name }
+      else
+        SpeedyAF::Base.model_reflections[:belongs_to][model]
+      end
     end
 
     protected
