@@ -38,6 +38,14 @@ workflows:
   ci:
     jobs:
       - bundle_and_test:
+          name: "ruby3-4_rails8-0"
+          ruby_version: "3.4.5"
+          rails_version: "8.0.1"
+      - bundle_and_test:
+          name: "ruby3-3_rails8-0"
+          ruby_version: "3.3.4"
+          rails_version: "8.0.1"
+      - bundle_and_test:
           name: "ruby3-3_rails7-2"
           ruby_version: "3.3.4"
           rails_version: "7.2.1"
