@@ -3,6 +3,10 @@ class IndexedFile < ActiveFedora::File
   include SpeedyAF::IndexedContent
 end
 
+class SampleResource < ActiveFedora::File
+  include SpeedyAF::IndexedContent
+end
+
 class Chapter < ActiveFedora::Base
   property :title, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_searchable
@@ -12,18 +16,23 @@ class Chapter < ActiveFedora::Base
   end
 end
 
-module DowncaseBehavior
+module TitleBehavior
   def lowercase_title
     title.downcase
+  end
+
+  def uppercase_title
+    title.upcase
   end
 end
 
 class Book < ActiveFedora::Base
-  include DowncaseBehavior
+  include TitleBehavior
   include SpeedyAF::OrderedAggregationIndex
 
   belongs_to :library, predicate: ::RDF::Vocab::DC.isPartOf
   has_subresource 'indexed_file', class_name: 'IndexedFile'
+  has_subresource 'descMetadata', class_name: 'SampleResource'
   has_subresource 'unindexed_file', class_name: 'ActiveFedora::File'
   property :title, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_searchable
@@ -33,14 +42,28 @@ class Book < ActiveFedora::Base
   end
   ordered_aggregation :chapters, through: :list_source
   indexed_ordered_aggregation :chapters
+end
 
-  def uppercase_title
-    title.upcase
+class Comic < ActiveFedora::Base
+  include TitleBehavior
+
+  belongs_to :library, predicate: ::RDF::Vocab::DC.isPartOf
+  belongs_to :comic_shop, predicate: ::RDF::Vocab::DC.isRequiredBy
+  property :title, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
+    index.as :stored_searchable
+  end
+  property :publisher, predicate: ::RDF::Vocab::DC.publisher, multiple: false do |index|
+    index.as :stored_searchable
   end
 end
 
 class Library < ActiveFedora::Base
   has_many :books, predicate: ::RDF::Vocab::DC.isPartOf
+  has_many :comics, predicate: ::RDF::Vocab::DC.isRequiredBy
+end
+
+class ComicShop < ActiveFedora::Base
+  has_many :comics, predicate: ::RDF::Vocab::DC.isRequiredBy
 end
 
 module SpeedySpecs

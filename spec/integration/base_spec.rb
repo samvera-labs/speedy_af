@@ -3,11 +3,13 @@ require 'spec_helper'
 require 'rdf/vocab/dc'
 
 describe SpeedyAF::Base do
-  before { load_fixture_classes!   }
+  before { load_fixture_classes! }
   after  { unload_fixture_classes! }
 
   let!(:library) { Library.create }
+  let!(:comic_shop) { ComicShop.create }
   let!(:book) { Book.new title: 'Ordered Things', publisher: 'ActiveFedora Performance LLC', library: library }
+  let!(:comic) { Comic.new title: 'Vestibulum velit nulla', publisher: 'SpeedyAF LLC', library: library, comic_shop: comic_shop }
   let!(:chapters) do
     [
       Chapter.create(title: 'Chapter 3', contributor: ['Hopper', 'Lovelace', 'Johnson']),
@@ -31,12 +33,21 @@ describe SpeedyAF::Base do
     Nigh tofth eliv ingdead.
     IPSUM
   end
+  let!(:metadata) do
+    <<-IPSUM
+    In scelerisque volutpat rutrum. Phasellus dictum velit at orci luctus convallis. Nulla rutrum
+    eget libero at sodales. Suspendisse potenti. Donec ut lobortis mi, ut venenatis diam. Phasellus
+    mi felis, cursus at lacinia vitae, aliquam vitae eros. Suspendisse tincidunt a massa in
+    condimentum. Nulla finibus risus quam, vel elementum enim sodales at.
+    IPSUM
+  end
   let(:book_presenter) { described_class.find(book.id) }
 
   context 'lightweight presenter' do
     before do
       book.indexed_file.content = indexed_content
       book.unindexed_file.content = unindexed_content
+      book.descMetadata.content = metadata
       book.chapters = chapters
       book.ordered_chapters = chapters.sort_by(&:title)
       book.save!
@@ -66,6 +77,7 @@ describe SpeedyAF::Base do
 
     context 'reflections' do
       let!(:library_presenter) { described_class.find(library.id) }
+      let!(:comic_shop_presenter) { described_class.find(comic_shop.id) }
 
       it 'loads via indexed proxies' do
         expect(book_presenter.chapter_ids).to match_array(book.chapter_ids)
@@ -82,10 +94,14 @@ describe SpeedyAF::Base do
 
       it 'loads indexed subresources' do
         ipsum_presenter = book_presenter.indexed_file
+        lorem_presenter = book_presenter.descMetadata
         expect(ipsum_presenter.model).to eq(IndexedFile)
+        expect(lorem_presenter.model).to eq(SampleResource)
         expect(ipsum_presenter.content).to eq(indexed_content)
+        expect(lorem_presenter.content).to eq(metadata)
         expect(book_presenter).not_to be_real
         expect(ipsum_presenter).not_to be_real
+        expect(lorem_presenter).not_to be_real
       end
 
       it 'loads has_many reflections' do
@@ -151,13 +167,57 @@ describe SpeedyAF::Base do
           expect(book_presenter).not_to be_real
           expect(ActiveFedora::SolrService).not_to have_received(:query)
         end
+
+        context 'filtering' do
+          let(:book_presenter) { described_class.find(book.id, load_reflections: [:indexed_file]) }
+          let(:comic_presenter) { described_class.find(comic.id, load_reflections: [:comic_shop]) }
+          before { comic.save! }
+
+          it 'has already loaded filtered subresources' do
+            expect(book_presenter.attrs).to include :indexed_file
+            expect(book_presenter.attrs).to_not include :descMetadata
+            allow(ActiveFedora::SolrService).to receive(:query).and_call_original
+            ipsum_presenter = book_presenter.indexed_file
+            expect(ipsum_presenter.model).to eq(IndexedFile)
+            expect(ipsum_presenter.content).to eq(indexed_content)
+            expect(ipsum_presenter).not_to be_real
+            expect(ActiveFedora::SolrService).not_to have_received(:query)
+          end
+
+          it 'has already loaded filtered has_many reflections' do
+            library.books.create(title: 'Ordered Things II')
+            library.save
+            book_ids = library.book_ids
+            library_presenter = described_class.find(library.id, load_reflections: [:books])
+            expect(library_presenter.attrs).to include :books
+            expect(library_presenter.attrs).to_not include :comics
+            allow(ActiveFedora::SolrService).to receive(:query).and_call_original
+            presenter = library_presenter.books
+            expect(presenter.length).to eq(2)
+            expect(presenter.all? { |bp| bp.is_a?(described_class) }).to be_truthy
+            expect(library_presenter.book_ids).to match_array(book_ids)
+            expect(library_presenter).not_to be_real
+            expect(ActiveFedora::SolrService).not_to have_received(:query)
+          end
+
+          it 'has already loaded filtered belongs_to reflections' do
+            expect(comic_presenter.attrs).to include :comic_shop
+            expect(comic_presenter.attrs).to_not include :library
+            allow(ActiveFedora::SolrService).to receive(:query).and_call_original
+            expect(comic_presenter.comic_shop_id).to eq(comic_shop.id)
+            expect(comic_presenter.comic_shop).to be_a(described_class)
+            expect(comic_presenter.comic_shop.model).to eq(comic_shop.class)
+            expect(comic_presenter).not_to be_real
+            expect(ActiveFedora::SolrService).not_to have_received(:query)
+          end
+        end
       end
     end
 
     context 'configuration' do
       before do
         described_class.config Book do
-          include DowncaseBehavior
+          include TitleBehavior
           self.defaults = { foo: 'bar!' }
         end
 
