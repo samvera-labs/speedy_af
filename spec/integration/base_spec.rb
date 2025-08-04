@@ -42,6 +42,7 @@ describe SpeedyAF::Base do
     IPSUM
   end
   let(:book_presenter) { described_class.find(book.id) }
+  let(:comic_presenter) { described_class.find(comic.id) }
 
   context 'lightweight presenter' do
     before do
@@ -106,19 +107,26 @@ describe SpeedyAF::Base do
 
       it 'loads has_many reflections' do
         library.books.create(title: 'Ordered Things II')
+        library.comics.create(title: 'Comet in Moominland')
         library.save
-        presenter = library_presenter.books
-        expect(presenter.length).to eq(2)
-        expect(presenter.all? { |bp| bp.is_a?(described_class) }).to be_truthy
+        expect(library_presenter.books.length).to eq(2)
+        expect(library_presenter.books.all? { |bp| bp.is_a?(described_class) }).to be_truthy
         expect(library_presenter.book_ids).to match_array(library.book_ids)
+        expect(library_presenter.comics.length).to eq(1)
+        expect(library_presenter.comics.all? { |bp| bp.is_a?(described_class) }).to be_truthy
+        expect(library_presenter.comic_ids).to match_array(library.comic_ids)
         expect(library_presenter).not_to be_real
       end
 
       it 'loads belongs_to reflections' do
-        expect(book_presenter.library_id).to eq(library.id)
-        expect(book_presenter.library).to be_a(described_class)
-        expect(book_presenter.library.model).to eq(library.class)
-        expect(book_presenter).not_to be_real
+        comic.save!
+        expect(comic_presenter.library_id).to eq(library.id)
+        expect(comic_presenter.library).to be_a(described_class)
+        expect(comic_presenter.library.model).to eq(library.class)
+        expect(comic_presenter.comic_shop_id).to eq(comic_shop.id)
+        expect(comic_presenter.comic_shop).to be_a(described_class)
+        expect(comic_presenter.comic_shop.model).to eq(comic_shop.class)
+        expect(comic_presenter).not_to be_real
       end
 
       context 'missing parent id' do
@@ -145,15 +153,22 @@ describe SpeedyAF::Base do
 
         it 'has already loaded has_many reflections' do
           library.books.create(title: 'Ordered Things II')
+          library.comics.create(title: 'Comet in Moominland')
           library.save
           book_ids = library.book_ids
+          comic_ids = library.comic_ids
           library_presenter = described_class.find(library.id, load_reflections: true)
           expect(library_presenter.attrs).to include :books
+          expect(library_presenter.attrs).to include :comics
           allow(ActiveFedora::SolrService).to receive(:query).and_call_original
-          presenter = library_presenter.books
-          expect(presenter.length).to eq(2)
-          expect(presenter.all? { |bp| bp.is_a?(described_class) }).to be_truthy
+          books_presenter = library_presenter.books
+          comics_presenter = library_presenter.comics
+          expect(books_presenter.length).to eq(2)
+          expect(books_presenter.all? { |bp| bp.is_a?(described_class) }).to be_truthy
+          expect(comics_presenter.length).to eq(1)
+          expect(comics_presenter.all? { |bp| bp.is_a?(described_class) }).to be_truthy
           expect(library_presenter.book_ids).to match_array(book_ids)
+          expect(library_presenter.comic_ids).to match_array(comic_ids)
           expect(library_presenter).not_to be_real
           expect(ActiveFedora::SolrService).not_to have_received(:query)
         end
@@ -200,13 +215,17 @@ describe SpeedyAF::Base do
             expect(ActiveFedora::SolrService).not_to have_received(:query)
           end
 
-          it 'has already loaded filtered belongs_to reflections' do
+          it 'has already loaded belongs_to reflections and does not filter' do
             expect(comic_presenter.attrs).to include :comic_shop
-            expect(comic_presenter.attrs).to_not include :library
+            expect(comic_presenter.attrs).to include :library
             allow(ActiveFedora::SolrService).to receive(:query).and_call_original
             expect(comic_presenter.comic_shop_id).to eq(comic_shop.id)
             expect(comic_presenter.comic_shop).to be_a(described_class)
             expect(comic_presenter.comic_shop.model).to eq(comic_shop.class)
+            expect(comic_presenter).not_to be_real
+            expect(comic_presenter.library_id).to eq(library.id)
+            expect(comic_presenter.library).to be_a(described_class)
+            expect(comic_presenter.library.model).to eq(library.class)
             expect(comic_presenter).not_to be_real
             expect(ActiveFedora::SolrService).not_to have_received(:query)
           end

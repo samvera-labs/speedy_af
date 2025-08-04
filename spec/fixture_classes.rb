@@ -48,7 +48,7 @@ class Comic < ActiveFedora::Base
   include TitleBehavior
 
   belongs_to :library, predicate: ::RDF::Vocab::DC.isPartOf
-  belongs_to :comic_shop, predicate: ::RDF::Vocab::DC.isRequiredBy
+  belongs_to :comic_shop, predicate: ::RDF::Vocab::DC.isPartOf
   property :title, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_searchable
   end
@@ -58,12 +58,12 @@ class Comic < ActiveFedora::Base
 end
 
 class Library < ActiveFedora::Base
-  has_many :books, predicate: ::RDF::Vocab::DC.isPartOf
-  has_many :comics, predicate: ::RDF::Vocab::DC.isRequiredBy
+  has_many :books, class_name: 'Book', predicate: ::RDF::Vocab::DC.isPartOf
+  has_many :comics, class_name: 'Comic', predicate: ::RDF::Vocab::DC.isPartOf
 end
 
 class ComicShop < ActiveFedora::Base
-  has_many :comics, predicate: ::RDF::Vocab::DC.isRequiredBy
+  has_many :comics, predicate: ::RDF::Vocab::DC.isPartOf
 end
 
 module SpeedySpecs
