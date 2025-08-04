@@ -117,7 +117,7 @@ module SpeedyAF
         proxy_hash.collect do |id, proxy|
           proxy.has_many_reflections(only: opts[:load_reflections]).collect do |_name, reflection|
             query = "#{predicate_for_reflection(reflection)}_ssim:#{id}"
-            query = "(#{query} AND has_model_ssim:#{reflection.class_name})" if opts[:load_reflections].is_a?(Array)
+            query = "(#{query} AND has_model_ssim:#{reflection.class_name})"
             query
           end
         end.flatten.join(" OR ")
