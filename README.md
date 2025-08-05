@@ -92,6 +92,10 @@ If you have questions or need help, please email [the Hydra community tech list]
 * `Base` may not play nicely with language-tagged RDF literals, as ActiveFedora does not
   currently index/encode the language tag into Solr.
 
+# Development
+
+To run tests locally, spin up Fedora and Solr using `docker-compose up` then run tests using `bundle exec rspec`.
+
 # Acknowledgments
 
 This software has been developed by and is brought to you by the Hydra community.  Learn more at the
