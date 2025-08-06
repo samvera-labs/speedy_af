@@ -91,6 +91,8 @@ If you have questions or need help, please email [the Hydra community tech list]
   be more mindful of both local resources and Solr request limits.
 * `Base` may not play nicely with language-tagged RDF literals, as ActiveFedora does not
   currently index/encode the language tag into Solr.
+* belongs_to relationships do not respect `include_reflections` filtering and will fetch all
+  belongs_to reflections when the `include_reflections` is not false.
 
 # Development
 
