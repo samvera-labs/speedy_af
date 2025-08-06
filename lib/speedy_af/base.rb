@@ -327,7 +327,7 @@ module SpeedyAF
 
     def load_belongs_to_reflection(reflection, ids_only = false)
       id = @attrs[reflection.predicate_for_solr.to_sym]
-      return id.first if ids_only && Array(id).size == 1
+      return Array(id).first if ids_only && Array(id).size == 1
       return if id.blank?
       query = Array(id).collect { |i| "id:#{i}" }.join(" OR ")
       query = "(#{query}) AND has_model_ssim:#{reflection.class_name}"
