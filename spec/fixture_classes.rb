@@ -70,3 +70,5 @@ module SpeedySpecs
   class DeepClass < ActiveFedora::Base
   end
 end
+
+class SpeedyAF::Proxy::Book < SpeedyAF::Base; end
