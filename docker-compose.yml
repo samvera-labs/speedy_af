@@ -4,9 +4,11 @@ volumes:
 
 services:
   fedora:
-    image: ghcr.io/samvera/fcrepo4:4.7.5
+    image: fcrepo/fcrepo:6.5.1-tomcat9
     volumes:
       - fedora:/data
+    environment:
+      - CATALINA_OPTS=-Dfcrepo.autoversioning.enabled=false
     ports:
       - '8986:8080'
 
