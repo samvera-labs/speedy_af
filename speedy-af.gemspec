@@ -35,4 +35,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rake'
   s.add_development_dependency 'rdoc'
   s.add_development_dependency 'bixby'
+  s.add_development_dependency 'benchmark' # Needed for bixby/rubocop in ruby 4+
 end
