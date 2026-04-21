@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 require 'ostruct'
+require 'speedy_af/errors'
 
 module SpeedyAF
   class Base
@@ -42,7 +43,9 @@ module SpeedyAF
       end
 
       def find(id, opts = {})
-        where(%(id:"#{id}"), opts.merge(rows: 1)).first
+        result = where(%(id:"#{id}"), opts.merge(rows: 1)).first
+        raise SpeedyAF::ModelMismatch if self != result.class && self != SpeedyAF::Base
+        result
       end
 
       def where(query, opts = {})

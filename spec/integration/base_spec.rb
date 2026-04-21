@@ -62,9 +62,20 @@ describe SpeedyAF::Base do
       expect { book_presenter.fthagn }.to raise_error(NoMethodError)
     end
 
-    it '.find' do
-      expect(book_presenter).to be_a(described_class)
-      expect(book_presenter.publisher).to eq(book.publisher)
+    context '.find' do
+      it 'locates the correct presenter' do
+        expect(book_presenter).to be_a(described_class)
+        expect(book_presenter.publisher).to eq(book.publisher)
+      end
+
+      context 'proxy subclass' do
+        it 'does not raise error for matching model' do
+          expect { SpeedyAF::Proxy::Book.find(book.id) }.to_not raise_error
+        end
+        it 'raises error for mismatched model' do
+          expect { SpeedyAF::Proxy::Book.find(comic.id) }.to raise_error(SpeedyAF::ModelMismatch)
+        end
+      end
     end
 
     it '.where' do
