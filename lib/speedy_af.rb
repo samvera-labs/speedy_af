@@ -5,4 +5,5 @@ module SpeedyAF
   autoload :IndexedContent, 'speedy_af/indexed_content'
   autoload :Base, 'speedy_af/base'
   autoload :OrderedAggregationIndex, 'speedy_af/ordered_aggregation_index'
+  autoload :Errors, 'speedy_af/errors'
 end
