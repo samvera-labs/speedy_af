@@ -43,6 +43,7 @@ module SpeedyAF
       end
 
       def find(id, opts = {})
+        raise ArgumentError, "Couldn't find SpeedyAF::Base without an ID" if id.blank?
         result = where(%(id:"#{id}"), opts.merge(rows: 1)).first
         raise SpeedyAF::ModelMismatch if self != result.class && self != SpeedyAF::Base
         result
