@@ -68,12 +68,20 @@ describe SpeedyAF::Base do
         expect(book_presenter.publisher).to eq(book.publisher)
       end
 
+      it 'raises ArgumentError if id is blank' do
+        expect { SpeedyAF::Base.find(nil) }.to raise_error(ArgumentError, "Couldn't find SpeedyAF::Base without an ID")
+      end
+
+      it 'raises RecordNotFound if id is not found' do
+        expect { SpeedyAF::Base.find('foo') }.to raise_error(SpeedyAF::RecordNotFound, "Couldn't find SpeedyAF::Base with ID 'foo'")
+      end
+
       context 'proxy subclass' do
         it 'does not raise error for matching model' do
           expect { SpeedyAF::Proxy::Book.find(book.id) }.to_not raise_error
         end
         it 'raises error for mismatched model' do
-          expect { SpeedyAF::Proxy::Book.find(comic.id) }.to raise_error(SpeedyAF::ModelMismatch)
+          expect { SpeedyAF::Proxy::Book.find(library.id) }.to raise_error(SpeedyAF::ModelMismatch)
         end
       end
     end
